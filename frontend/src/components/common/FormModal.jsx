@@ -27,7 +27,11 @@ export default function FormModal({ isOpen, onClose, title, fields = [], initial
                 ) : field.options ? (
                   <Select value={values[field.name] || ''} onChange={(event) => setValues({ ...values, [field.name]: event.target.value })}>
                     <option value="">Choose</option>
-                    {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                    {field.options.map((option) => {
+                      const label = typeof option === 'object' ? option.label : option;
+                      const value = typeof option === 'object' ? option.value : option;
+                      return <option key={value} value={value}>{label}</option>;
+                    })}
                   </Select>
                 ) : (
                   <Input type={field.type || 'text'} value={values[field.name] || ''} onChange={(event) => setValues({ ...values, [field.name]: event.target.value })} />

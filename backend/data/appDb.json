@@ -664,8 +664,8 @@
           "Strategy",
           "Patience"
         ],
-        "progress": 75,
-        "status": "in-progress",
+        "progress": 100,
+        "status": "completed",
         "lesson": "Greed loses games; patience wins them.",
         "chessConcept": "Avoiding poisoned pawns and traps",
         "body": "The clever jackal survives by refusing easy temptation. In chess, not every free pawn is truly free. This story teaches patience, calculation, and strategic restraint.",
@@ -1184,8 +1184,8 @@
                   "Strategy",
                   "Patience"
                 ],
-                "progress": 75,
-                "status": "in-progress",
+                "progress": 100,
+                "status": "completed",
                 "lesson": "Greed loses games; patience wins them.",
                 "chessConcept": "Avoiding poisoned pawns and traps",
                 "body": "The clever jackal survives by refusing easy temptation. In chess, not every free pawn is truly free. This story teaches patience, calculation, and strategic restraint.",
@@ -1709,8 +1709,8 @@
           "Strategy",
           "Patience"
         ],
-        "progress": 75,
-        "status": "in-progress",
+        "progress": 100,
+        "status": "completed",
         "lesson": "Greed loses games; patience wins them.",
         "chessConcept": "Avoiding poisoned pawns and traps",
         "body": "The clever jackal survives by refusing easy temptation. In chess, not every free pawn is truly free. This story teaches patience, calculation, and strategic restraint.",
@@ -2313,6 +2313,18 @@
     }
   },
   "actionLog": [
+    {
+      "id": "log-1779097691435",
+      "role": "student",
+      "text": "Updated story The Clever Jackal",
+      "time": "2026-05-18T09:48:11.435Z"
+    },
+    {
+      "id": "log-1779097689250",
+      "role": "student",
+      "text": "Updated story The Clever Jackal",
+      "time": "2026-05-18T09:48:09.251Z"
+    },
     {
       "id": "log-1779083057047",
       "role": "student",

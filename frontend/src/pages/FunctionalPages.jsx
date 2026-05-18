@@ -442,8 +442,58 @@ function SettingsPage({ role, title, fields, save }) {
 }
 
 export function AdminUsers() {
-  const navigate = useNavigate();
-  return <AdminCrudPage title="Users" resource="users" fields={[{ name: 'name', label: 'Name', required: true }, { name: 'email', label: 'Email' }, { name: 'role', label: 'Role', options: ['student','coach','admin','parent'] }, { name: 'status', label: 'Status', options: ['active','suspended'] }]} onView={(item) => navigate(`/admin/users/${item.id}`)} />;
+  const { data, reload, error } = useLoad(() => adminApi.list('users'), []);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const toast = useToast();
+
+  useEffect(() => {
+    if (data) {
+      console.log('[AdminUsers] Fetched users from API:', data);
+    }
+  }, [data]);
+
+  const users = filterItems(data || [], search, filter);
+
+  const columns = [
+    { key: 'name', label: 'NAME', bold: true },
+    { key: 'role', label: 'ROLE', badge: true },
+    { key: 'status', label: 'STATUS', status: true },
+  ];
+
+  const handleAction = (action, user) => {
+    if (action === 'delete') {
+      adminApi.remove('users', user.id).then(() => {
+        toast({ title: 'User removed', status: 'success' });
+        reload();
+      });
+    }
+  };
+
+  return (
+    <PageShell role="admin" title="Users">
+      {!data && !error && <LoadingState />}
+      {error && <ErrorState message={error} />}
+      {data && (
+        <VStack align="stretch" spacing={5}>
+          <SearchFilterBar
+            search={search}
+            setSearch={setSearch}
+            filter={filter}
+            setFilter={setFilter}
+            filters={['all', 'student', 'coach', 'admin']}
+          />
+          <DataTable
+            columns={columns}
+            items={users}
+            onView={(user) => toast({ title: `Viewing ${user.name}`, status: 'info' })}
+            onEdit={(user) => toast({ title: `Editing ${user.name}`, status: 'info' })}
+            onDelete={(user) => handleAction('delete', user)}
+          />
+        </VStack>
+      )}
+    </PageShell>
+  );
 }
 
 export function AdminUserDetail() {
@@ -467,9 +517,130 @@ export function AdminCrudPage({ title, resource, fields, onView }) {
 export function AdminCurriculum() {
   const modal = useDisclosure();
   const toast = useToast();
-  const { data, reload } = useLoad(() => adminApi.curriculum(), []);
-  const add = async (values) => { await adminApi.createModule(values); toast({ title: 'Module added', status: 'success' }); modal.onClose(); reload(); };
-  return <PageShell role="admin" title="Curriculum">{!data ? <LoadingState /> : <Tabs><TabList><Tab>Modules</Tab><Tab>Chapters</Tab></TabList><TabPanels><TabPanel><Button mb={4} onClick={modal.onOpen}>Add Module</Button><DataTable items={data.modules} columns={[{ key: 'title', label: 'Module' }, { key: 'order', label: 'Order' }, { key: 'chapters', label: 'Chapters' }]} onEdit={() => toast({ title: 'Use up/down controls to reorder', status: 'info' })} /></TabPanel><TabPanel><DataTable items={data.chapters} columns={[{ key: 'title', label: 'Chapter' }, { key: 'moduleId', label: 'Module' }, { key: 'order', label: 'Order' }]} /></TabPanel></TabPanels></Tabs>}<FormModal isOpen={modal.isOpen} onClose={modal.onClose} title="Add Module" fields={[{ name: 'title', label: 'Title', required: true }]} onSubmit={add} /></PageShell>;
+  const { data, reload, loading } = useLoad(() => adminApi.curriculum(), []);
+  const [activeTab, setActiveTab] = useState(0);
+  const [editing, setEditing] = useState(null);
+
+  const handleSave = async (values) => {
+    try {
+      if (activeTab === 0) {
+        editing ? await adminApi.updateModule(editing.module_id, values) : await adminApi.createModule(values);
+      } else if (activeTab === 1) {
+        editing ? await adminApi.updateChapter(editing.chapter_id, values) : await adminApi.createChapter(values);
+      } else {
+        editing ? await adminApi.updateStory(editing.story_id, values) : await adminApi.createStory(values);
+      }
+      toast({ title: 'Saved successfully', status: 'success' });
+      modal.onClose();
+      reload();
+    } catch (err) {
+      toast({ title: 'Error saving', description: err.message, status: 'error' });
+    }
+  };
+
+  const handleDelete = async (item) => {
+    try {
+      if (activeTab === 0) await adminApi.deleteModule(item.module_id);
+      else if (activeTab === 1) await adminApi.deleteChapter(item.chapter_id);
+      else await adminApi.deleteStory(item.story_id);
+      toast({ title: 'Deleted successfully', status: 'success' });
+      reload();
+    } catch (err) {
+      toast({ title: 'Error deleting', description: err.message, status: 'error' });
+    }
+  };
+
+  const fields = [
+    [
+      { name: 'title', label: 'Module Title', required: true },
+      { name: 'subtitle', label: 'Subtitle' },
+      { name: 'level', label: 'Level', options: ['Beginner', 'Intermediate', 'Advanced'] },
+      { name: 'order_index', label: 'Order', type: 'number' },
+    ],
+    [
+      { name: 'title', label: 'Chapter Title', required: true },
+      { name: 'module_id', label: 'Module', required: true, options: (data?.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
+      { name: 'order_index', label: 'Order', type: 'number' },
+    ],
+    [
+      { name: 'title', label: 'Story Title', required: true },
+      { name: 'chapter_id', label: 'Chapter', required: true, options: (data?.chapters || []).map(c => ({ label: c.title, value: c.chapter_id })) },
+      { name: 'description', label: 'Short Description', type: 'textarea' },
+      { name: 'content', label: 'Story Content', type: 'textarea' },
+      { name: 'order_index', label: 'Order', type: 'number' },
+    ]
+  ][activeTab];
+
+  return (
+    <PageShell role="admin" title="Curriculum">
+      {loading ? (
+        <LoadingState />
+      ) : (
+        <VStack align="stretch" spacing={6}>
+          <Tabs index={activeTab} onChange={setActiveTab} variant="enclosed">
+            <TabList>
+              <Tab>Modules</Tab>
+              <Tab>Chapters</Tab>
+              <Tab>Stories</Tab>
+            </TabList>
+            <TabPanels>
+              <TabPanel px={0} pt={6}>
+                <Button mb={4} colorScheme="brand" onClick={() => { setEditing(null); modal.onOpen(); }}>Add Module</Button>
+                <DataTable
+                  items={data?.modules || []}
+                  columns={[
+                    { key: 'title', label: 'MODULE', bold: true },
+                    { key: 'level', label: 'LEVEL', badge: true },
+                    { key: 'order_index', label: 'ORDER' },
+                  ]}
+                  onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                  onDelete={handleDelete}
+                  onView={(item) => toast({ title: `Viewing ${item.title}`, status: 'info' })}
+                />
+              </TabPanel>
+              <TabPanel px={0} pt={6}>
+                <Button mb={4} colorScheme="brand" onClick={() => { setEditing(null); modal.onOpen(); }}>Add Chapter</Button>
+                <DataTable
+                  items={data?.chapters || []}
+                  columns={[
+                    { key: 'title', label: 'CHAPTER', bold: true },
+                    { key: 'module_name', label: 'MODULE' },
+                    { key: 'order_index', label: 'ORDER' },
+                  ]}
+                  onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                  onDelete={handleDelete}
+                  onView={(item) => toast({ title: `Viewing ${item.title}`, status: 'info' })}
+                />
+              </TabPanel>
+              <TabPanel px={0} pt={6}>
+                <Button mb={4} colorScheme="brand" onClick={() => { setEditing(null); modal.onOpen(); }}>Add Story</Button>
+                <DataTable
+                  items={data?.stories || []}
+                  columns={[
+                    { key: 'title', label: 'STORY', bold: true },
+                    { key: 'description', label: 'DESCRIPTION' },
+                    { key: 'chapter_name', label: 'CHAPTER' },
+                    { key: 'order_index', label: 'ORDER' },
+                  ]}
+                  onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                  onDelete={handleDelete}
+                  onView={(item) => toast({ title: `Viewing ${item.title}`, status: 'info' })}
+                />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        </VStack>
+      )}
+      <FormModal
+        isOpen={modal.isOpen}
+        onClose={modal.onClose}
+        title={`${editing ? 'Edit' : 'Add'} ${['Module', 'Chapter', 'Story'][activeTab]}`}
+        fields={fields}
+        initialValues={editing || {}}
+        onSubmit={handleSave}
+      />
+    </PageShell>
+  );
 }
 
 export function AdminAnalytics() {

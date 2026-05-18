@@ -1,5 +1,6 @@
 import { readDb, writeDb, logAction, findChapter, findModule, findStoryById, updateStoryProgress } from '../data/mockDb.js';
 import { query } from '../data/database.js';
+import { parseIds } from './adminController.js';
 
 const byId = (items, id) => items.find((item) => item.id === id);
 
@@ -35,7 +36,7 @@ export async function storyModule(req, res) {
     if (moduleResult.rows.length === 0) return res.status(404).json({ error: 'Module not found' });
     
     const m = moduleResult.rows[0];
-    const chapterIds = JSON.parse(m.chapter_ids.replace(/'/g, '"').replace('[', '["').replace(']', '"]').replace(/, /g, '", "'));
+    const chapterIds = parseIds(m.chapter_ids);
     
     const chaptersResult = await query('SELECT * FROM "chapter" WHERE chapter_id = ANY($1)', [chapterIds]);
     
@@ -65,7 +66,7 @@ export async function moduleChapters(req, res) {
     if (moduleResult.rows.length === 0) return res.status(404).json({ error: 'Module not found' });
     
     const m = moduleResult.rows[0];
-    const chapterIds = JSON.parse(m.chapter_ids.replace(/'/g, '"').replace('[', '["').replace(']', '"]').replace(/, /g, '", "'));
+    const chapterIds = parseIds(m.chapter_ids);
     
     const chaptersResult = await query('SELECT * FROM "chapter" WHERE chapter_id = ANY($1)', [chapterIds]);
     

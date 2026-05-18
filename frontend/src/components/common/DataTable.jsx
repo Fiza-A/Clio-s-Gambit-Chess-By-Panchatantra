@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge, Button, Table, Tbody, Td, Th, Thead, Tr, Box } from '@chakra-ui/react';
 
-export default function DataTable({ items, columns, onView, onEdit, onDelete }) {
+export default function DataTable({ items = [], columns, onView, onEdit, onDelete }) {
   return (
     <Box overflowX="auto">
       <Table size="sm">
@@ -12,8 +12,15 @@ export default function DataTable({ items, columns, onView, onEdit, onDelete }) 
           {items.map((item) => (
             <Tr key={item.id || item.title || item.name}>
               {columns.map((col) => (
-                <Td key={col.key}>
-                  {col.badge ? <Badge colorScheme={String(item[col.key]).includes('active') ? 'green' : 'yellow'}>{item[col.key]}</Badge> : String(item[col.key] ?? '')}
+                <Td key={col.key} fontWeight={col.bold ? "bold" : "normal"}>
+                  {col.status || col.badge ? (
+                    <Badge 
+                      colorScheme={String(item[col.key]).toLowerCase().includes('active') ? 'green' : 'yellow'}
+                      textTransform="uppercase"
+                    >
+                      {item[col.key]}
+                    </Badge>
+                  ) : String(item[col.key] ?? '')}
                 </Td>
               ))}
               <Td textAlign="right">
