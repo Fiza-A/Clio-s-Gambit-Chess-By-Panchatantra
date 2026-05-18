@@ -1,0 +1,41 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(214, 168, 79, 0.13), transparent 28%),
+    #FAF7F0;
+}
+
+.card-hover {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 38px rgba(17, 24, 39, 0.09);
+  border-color: rgba(214, 168, 79, 0.42);
+}
+
+.gold-text {
+  background: linear-gradient(135deg, #f6df9b, #d6a84f 55%, #a97721);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(214, 168, 79, 0.28);
+  border-radius: 999px;
+}

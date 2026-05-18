@@ -1,0 +1,28 @@
+import { Router } from 'express';
+import * as c from '../controllers/studentController.js';
+
+const router = Router();
+router.get('/dashboard', c.dashboard);
+router.get('/story-modules', c.storyModules);
+router.get('/story-modules/:moduleId', c.storyModule);
+router.get('/story-modules/:moduleId/chapters', c.moduleChapters);
+router.get('/story-modules/:moduleId/chapters/:chapterId', c.chapterDetail);
+router.get('/story-modules/:moduleId/chapters/:chapterId/stories', c.chapterStories);
+router.get('/stories', c.stories);
+router.get('/stories/:id', c.story);
+router.patch('/stories/:id/progress', c.storyProgress);
+router.get('/principles', c.principles);
+router.get('/principles/:id', c.principle);
+router.patch('/principles/:id/learned', c.learned);
+router.get('/puzzles', c.puzzles);
+router.get('/puzzles/:id', c.puzzle);
+router.post('/puzzles/:id/submit', c.submitPuzzle);
+router.get('/achievements', c.achievements);
+router.get('/analytics', c.analytics);
+router.get('/classes', c.classes);
+router.get('/classes/:id', c.classDetail);
+router.post('/classes/:id/join', c.joinClass);
+router.get('/profile', c.profile);
+router.patch('/profile', c.updateProfile);
+router.get('/mistakes', c.mistakes);
+export default router;

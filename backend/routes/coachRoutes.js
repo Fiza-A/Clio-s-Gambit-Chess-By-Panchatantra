@@ -1,0 +1,27 @@
+import { Router } from 'express';
+import * as c from '../controllers/coachController.js';
+
+const router = Router();
+router.get('/dashboard', c.dashboard);
+router.get('/students', c.students);
+router.get('/students/:id', c.student);
+router.patch('/students/:id/notes', c.notes);
+router.get('/classes', c.classes);
+router.post('/classes', c.createClass);
+router.get('/classes/:id', c.classDetail);
+router.patch('/classes/:id', c.updateClass);
+router.delete('/classes/:id', c.deleteClass);
+router.post('/classes/:id/reminder', c.reminder);
+router.get('/live-sessions', c.liveSessions);
+router.post('/live-sessions/:id/start', c.startSession);
+router.post('/live-sessions/:id/end', c.endSession);
+router.get('/assignments', c.assignments);
+router.post('/assignments', c.createAssignment);
+router.patch('/submissions/:id/review', c.reviewSubmission);
+router.get('/resources', c.resources);
+router.post('/resources', c.createResource);
+router.get('/messages', c.messages);
+router.post('/messages/:conversationId', c.sendMessage);
+router.post('/reports/generate', c.report);
+router.patch('/settings', c.settings);
+export default router;

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+*.log
+vite.*.log
+server/*.log
+
+.env
+.env.*
+
+server/data/appDb.json
+server/data/db.json

@@ -1,0 +1,2329 @@
+{
+  "auth": {
+    "currentUser": null,
+    "users": [
+      {
+        "id": "student-1",
+        "name": "Arjun Sharma",
+        "email": "arjun@panchatantra.test",
+        "role": "student",
+        "status": "active",
+        "points": 1850,
+        "streak": 12
+      },
+      {
+        "id": "coach-1",
+        "name": "Coach Arvind",
+        "email": "coach@panchatantra.test",
+        "role": "coach",
+        "status": "active"
+      },
+      {
+        "id": "admin-1",
+        "name": "Admin",
+        "email": "admin@panchatantra.test",
+        "role": "admin",
+        "status": "active"
+      },
+      {
+        "id": "parent-1",
+        "name": "Meera Sharma",
+        "email": "meera@panchatantra.test",
+        "role": "parent",
+        "status": "active"
+      }
+    ]
+  },
+  "dashboards": {
+    "admin": {
+      "topbar": {
+        "title": "Welcome back, Admin 👑",
+        "subtitle": "Here's what's happening in your academy today.",
+        "cta": "Export Report"
+      },
+      "stats": [
+        {
+          "label": "Total Users",
+          "value": "2,458",
+          "trend": "+12.5% vs last month",
+          "icon": "groups",
+          "color": "purple"
+        },
+        {
+          "label": "Active Students",
+          "value": "1,896",
+          "trend": "+9.3% vs last month",
+          "icon": "school",
+          "color": "green"
+        },
+        {
+          "label": "Total Stories",
+          "value": "48",
+          "subtitle": "4 Modules · 12 Chapters",
+          "icon": "book",
+          "color": "blue"
+        },
+        {
+          "label": "Total Puzzles",
+          "value": "1,284",
+          "trend": "+82 added this month",
+          "icon": "puzzle",
+          "color": "gold"
+        },
+        {
+          "label": "Achievements Unlocked",
+          "value": "8,732",
+          "trend": "+18.7% vs last month",
+          "icon": "trophy",
+          "color": "red"
+        }
+      ],
+      "userGrowth": [
+        {
+          "name": "Apr 26",
+          "total": 1200,
+          "active": 700
+        },
+        {
+          "name": "Apr 30",
+          "total": 1450,
+          "active": 900
+        },
+        {
+          "name": "May 4",
+          "total": 1700,
+          "active": 1050
+        },
+        {
+          "name": "May 8",
+          "total": 1950,
+          "active": 1250
+        },
+        {
+          "name": "May 12",
+          "total": 2100,
+          "active": 1375
+        },
+        {
+          "name": "May 16",
+          "total": 2280,
+          "active": 1520
+        },
+        {
+          "name": "May 20",
+          "total": 2420,
+          "active": 1700
+        },
+        {
+          "name": "May 25",
+          "total": 2550,
+          "active": 1820
+        }
+      ],
+      "roles": [
+        {
+          "name": "Students",
+          "value": 1896,
+          "percent": "77.1%",
+          "color": "#111827"
+        },
+        {
+          "name": "Coaches",
+          "value": 342,
+          "percent": "13.9%",
+          "color": "#D6A84F"
+        },
+        {
+          "name": "Admins",
+          "value": 78,
+          "percent": "3.2%",
+          "color": "#7C5CFF"
+        },
+        {
+          "name": "Parents",
+          "value": 142,
+          "percent": "5.8%",
+          "color": "#45A886"
+        }
+      ],
+      "recentActivity": [
+        {
+          "title": "New student registered",
+          "detail": "Arjun Sharma",
+          "time": "2 min ago",
+          "icon": "person"
+        },
+        {
+          "title": "New story published",
+          "detail": "The Wise Elephant",
+          "time": "15 min ago",
+          "icon": "book"
+        },
+        {
+          "title": "New puzzle added",
+          "detail": "Fork in the Forest",
+          "time": "1 hr ago",
+          "icon": "puzzle"
+        },
+        {
+          "title": "New class created",
+          "detail": "Advanced Tactics - Batch 12",
+          "time": "2 hr ago",
+          "icon": "school"
+        },
+        {
+          "title": "Achievement unlocked",
+          "detail": "25 students unlocked “Sacrifice Master”",
+          "time": "3 hr ago",
+          "icon": "trophy"
+        }
+      ],
+      "content": [
+        {
+          "label": "Modules",
+          "value": "4"
+        },
+        {
+          "label": "Chapters",
+          "value": "12"
+        },
+        {
+          "label": "Stories",
+          "value": "48"
+        },
+        {
+          "label": "Principles",
+          "value": "36"
+        },
+        {
+          "label": "Puzzles",
+          "value": "1,284"
+        }
+      ],
+      "topModules": [
+        {
+          "module": "The Lion's Wisdom",
+          "completion": 78,
+          "students": "1,245"
+        },
+        {
+          "module": "The Monkey's Mind",
+          "completion": 68,
+          "students": "1,032"
+        },
+        {
+          "module": "The Elephant's Patience",
+          "completion": 65,
+          "students": "980"
+        },
+        {
+          "module": "The Tortoise's Strategy",
+          "completion": 59,
+          "students": "842"
+        }
+      ],
+      "engagement": {
+        "score": 84,
+        "trend": "+14% vs last month",
+        "session": "32m 45s"
+      },
+      "performance": [
+        {
+          "label": "Completion Rate",
+          "value": "72.6%",
+          "trend": "+8.4%"
+        },
+        {
+          "label": "Puzzles Solved",
+          "value": "12,842",
+          "trend": "+15.3%"
+        },
+        {
+          "label": "Brilliant Moves",
+          "value": "1,245",
+          "trend": "+22.6%"
+        },
+        {
+          "label": "Average Rating",
+          "value": "1563",
+          "trend": "+41"
+        },
+        {
+          "label": "Retention Rate",
+          "value": "89.2%",
+          "trend": "+6.7%"
+        }
+      ]
+    },
+    "coach": {
+      "topbar": {
+        "title": "Welcome back, Coach Arvind! 👋",
+        "subtitle": "Here's what's happening with your academy today.",
+        "cta": "Create Class"
+      },
+      "stats": [
+        {
+          "label": "Total Students",
+          "value": "42",
+          "trend": "+4 new this month",
+          "icon": "groups",
+          "color": "purple"
+        },
+        {
+          "label": "Active Students",
+          "value": "38",
+          "subtitle": "90% of total students",
+          "icon": "school",
+          "color": "green"
+        },
+        {
+          "label": "Classes This Month",
+          "value": "12",
+          "trend": "+2 vs last month",
+          "icon": "calendar",
+          "color": "gold"
+        },
+        {
+          "label": "Avg. Progress",
+          "value": "76%",
+          "trend": "+8% vs last month",
+          "icon": "analytics",
+          "color": "red"
+        },
+        {
+          "label": "Achievements Unlocked",
+          "value": "156",
+          "trend": "+22 this month",
+          "icon": "diamond",
+          "color": "blue"
+        }
+      ],
+      "progress": [
+        {
+          "name": "Apr 26",
+          "classProgress": 50,
+          "puzzleAccuracy": 36
+        },
+        {
+          "name": "May 3",
+          "classProgress": 56,
+          "puzzleAccuracy": 40
+        },
+        {
+          "name": "May 10",
+          "classProgress": 73,
+          "puzzleAccuracy": 52
+        },
+        {
+          "name": "May 17",
+          "classProgress": 76,
+          "puzzleAccuracy": 60
+        },
+        {
+          "name": "May 24",
+          "classProgress": 80,
+          "puzzleAccuracy": 64
+        }
+      ],
+      "students": [
+        {
+          "name": "Arjun Sharma",
+          "type": "Strategic Thinker",
+          "progress": 84,
+          "trend": 7
+        },
+        {
+          "name": "Vihaan Mehta",
+          "type": "Tactical Hunter",
+          "progress": 72,
+          "trend": 5
+        },
+        {
+          "name": "Ananya Singh",
+          "type": "Positional Player",
+          "progress": 69,
+          "trend": -2
+        },
+        {
+          "name": "Rohan Verma",
+          "type": "Endgame Specialist",
+          "progress": 63,
+          "trend": 6
+        },
+        {
+          "name": "Ishaan Kapoor",
+          "type": "Aggressive Attacker",
+          "progress": 58,
+          "trend": -1
+        }
+      ],
+      "schedule": [
+        {
+          "time": "5:00 PM",
+          "title": "Advanced Tactics - Batch A",
+          "topic": "Sacrifices & Combinations",
+          "students": "12 Students",
+          "status": "Live Now"
+        },
+        {
+          "time": "6:30 PM",
+          "title": "Intermediate Class - Batch B",
+          "topic": "Positional Play",
+          "students": "8 Students",
+          "status": "Starts in 1h"
+        },
+        {
+          "time": "8:00 PM",
+          "title": "Endgame Mastery - Batch C",
+          "topic": "King & Pawn Endgames",
+          "students": "10 Students",
+          "status": "Upcoming"
+        }
+      ],
+      "classAnalytics": [
+        {
+          "name": "Advanced",
+          "value": 4,
+          "percent": "33%",
+          "color": "#7C5CFF"
+        },
+        {
+          "name": "Intermediate",
+          "value": 5,
+          "percent": "42%",
+          "color": "#3B82F6"
+        },
+        {
+          "name": "Beginner",
+          "value": 2,
+          "percent": "17%",
+          "color": "#7BCB77"
+        },
+        {
+          "name": "Other",
+          "value": 1,
+          "percent": "8%",
+          "color": "#D6A84F"
+        }
+      ],
+      "strengths": [
+        {
+          "label": "Tactical Awareness",
+          "value": 78
+        },
+        {
+          "label": "Calculation",
+          "value": 72
+        },
+        {
+          "label": "Endgame Technique",
+          "value": 69
+        }
+      ],
+      "weaknesses": [
+        {
+          "label": "Opening Knowledge",
+          "value": 51
+        },
+        {
+          "label": "Positional Play",
+          "value": 48
+        },
+        {
+          "label": "Time Management",
+          "value": 45
+        }
+      ],
+      "recentActivity": [
+        {
+          "title": "Arjun Sharma solved 15 puzzles",
+          "time": "30 min ago",
+          "icon": "puzzle"
+        },
+        {
+          "title": "Vihaan Mehta unlocked “Brilliant Move”",
+          "time": "1 hr ago",
+          "icon": "diamond"
+        },
+        {
+          "title": "Ananya Singh completed “The Lion’s Wisdom”",
+          "time": "2 hr ago",
+          "icon": "book"
+        },
+        {
+          "title": "Rohan Verma joined the class",
+          "time": "3 hr ago",
+          "icon": "calendar"
+        }
+      ]
+    },
+    "student": {
+      "topbar": {
+        "title": "Welcome back, Arjun! ♟",
+        "subtitle": "Every move is a step toward mastery."
+      },
+      "stats": [
+        {
+          "label": "Stories Completed",
+          "value": "24 / 48",
+          "subtitle": "50%",
+          "icon": "book",
+          "color": "gold",
+          "progress": 50
+        },
+        {
+          "label": "Puzzles Solved",
+          "value": "342",
+          "subtitle": "This Month: 78",
+          "icon": "puzzle",
+          "color": "purple"
+        },
+        {
+          "label": "Accuracy",
+          "value": "87%",
+          "trend": "+6% vs last month",
+          "icon": "target",
+          "color": "green"
+        },
+        {
+          "label": "Rating (Academy)",
+          "value": "1560",
+          "trend": "+85",
+          "icon": "analytics",
+          "color": "blue"
+        },
+        {
+          "label": "Brilliant Moves",
+          "value": "18",
+          "subtitle": "Keep shining!",
+          "icon": "diamond",
+          "color": "gold"
+        }
+      ],
+      "progressWeek": [
+        {
+          "name": "Mon",
+          "value": 280
+        },
+        {
+          "name": "Tue",
+          "value": 420
+        },
+        {
+          "name": "Wed",
+          "value": 560
+        },
+        {
+          "name": "Thu",
+          "value": 800
+        },
+        {
+          "name": "Fri",
+          "value": 1050
+        },
+        {
+          "name": "Sat",
+          "value": 1260
+        },
+        {
+          "name": "Sun",
+          "value": 1500
+        }
+      ],
+      "recommended": [
+        {
+          "title": "The Lion and the Clever Rabbit",
+          "tags": [
+            "Strategy",
+            "Patience"
+          ],
+          "chapter": "Chapter 3",
+          "art": "lion"
+        },
+        {
+          "title": "The Tortoise and the Geese",
+          "tags": [
+            "Planning",
+            "Prophylaxis"
+          ],
+          "chapter": "Chapter 2",
+          "art": "geese"
+        },
+        {
+          "title": "The Brahmin and the Mongoose",
+          "tags": [
+            "Tactics",
+            "Awareness"
+          ],
+          "chapter": "Chapter 1",
+          "art": "mongoose"
+        }
+      ],
+      "identity": {
+        "name": "The Sage",
+        "description": "You are a patient strategist who excels in long-term planning and endgame mastery.",
+        "radar": [
+          {
+            "subject": "Tactical Awareness",
+            "value": 78
+          },
+          {
+            "subject": "Strategic Depth",
+            "value": 72
+          },
+          {
+            "subject": "Endgame Precision",
+            "value": 82
+          },
+          {
+            "subject": "Opening Knowledge",
+            "value": 64
+          },
+          {
+            "subject": "Time Management",
+            "value": 58
+          },
+          {
+            "subject": "Emotional Stability",
+            "value": 74
+          }
+        ]
+      },
+      "puzzle": {
+        "side": "White to Move",
+        "prompt": "Find the best move!",
+        "difficulty": "Medium",
+        "reward": "25 Points"
+      }
+    }
+  },
+  "student": {
+    "stories": [
+      {
+        "id": "story-brahmin-mongoose",
+        "title": "The Brahmin and the Mongoose",
+        "subtitle": "Think before you strike.",
+        "tags": [
+          "Tactics",
+          "Awareness"
+        ],
+        "progress": 100,
+        "status": "completed",
+        "lesson": "Never move without checking the full board.",
+        "chessConcept": "Blunder prevention and threat detection",
+        "body": "A loyal mongoose saves a child from danger, but the Brahmin acts too quickly and regrets his decision. In chess, the same mistake happens when a player reacts before calculating. This story teaches you to pause, inspect threats, and confirm your move before touching a piece.",
+        "relatedPuzzleId": "puzzle-1",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-1",
+        "chapterTitle": "Chapter 1: Awareness Before Action"
+      },
+      {
+        "id": "story-wise-crow",
+        "title": "The Wise Crow",
+        "subtitle": "Small observations create big victories.",
+        "tags": [
+          "Observation",
+          "Planning"
+        ],
+        "progress": 60,
+        "status": "in-progress",
+        "lesson": "Notice small details before forming a plan.",
+        "chessConcept": "Candidate moves and board scanning",
+        "body": "The crow survives by noticing what others ignore. Chess rewards the same skill: before choosing a move, scan checks, captures, threats, weak squares, and undefended pieces.",
+        "relatedPuzzleId": "puzzle-2",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-1",
+        "chapterTitle": "Chapter 1: Awareness Before Action"
+      },
+      {
+        "id": "story-deer-and-hunter",
+        "title": "The Deer and the Hunter",
+        "subtitle": "Danger is often hidden in plain sight.",
+        "tags": [
+          "Defense",
+          "Awareness"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Identify threats before attacking.",
+        "chessConcept": "Defensive resources",
+        "body": "The deer survives because it senses danger before it appears. In chess, strong players identify the opponent’s idea before pursuing their own attack.",
+        "relatedPuzzleId": "puzzle-3",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-1",
+        "chapterTitle": "Chapter 1: Awareness Before Action"
+      },
+      {
+        "id": "story-clever-jackal",
+        "title": "The Clever Jackal",
+        "subtitle": "The trap of greed.",
+        "tags": [
+          "Strategy",
+          "Patience"
+        ],
+        "progress": 75,
+        "status": "in-progress",
+        "lesson": "Greed loses games; patience wins them.",
+        "chessConcept": "Avoiding poisoned pawns and traps",
+        "body": "The clever jackal survives by refusing easy temptation. In chess, not every free pawn is truly free. This story teaches patience, calculation, and strategic restraint.",
+        "relatedPuzzleId": "puzzle-4",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-2",
+        "chapterTitle": "Chapter 2: Patience and Planning"
+      },
+      {
+        "id": "story-tortoise-geese",
+        "title": "The Tortoise and the Geese",
+        "subtitle": "Discipline protects the plan.",
+        "tags": [
+          "Planning",
+          "Prophylaxis"
+        ],
+        "progress": 45,
+        "status": "in-progress",
+        "lesson": "A good plan requires self-control.",
+        "chessConcept": "Prophylaxis and positional discipline",
+        "body": "The tortoise has a path to safety but fails because he cannot remain disciplined. In chess, even a good plan collapses when you ignore your opponent’s counterplay.",
+        "relatedPuzzleId": "puzzle-5",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-2",
+        "chapterTitle": "Chapter 2: Patience and Planning"
+      },
+      {
+        "id": "story-monkey-crocodile",
+        "title": "The Monkey and the Crocodile",
+        "subtitle": "Escape through calm calculation.",
+        "tags": [
+          "Calculation",
+          "Resourcefulness"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Stay calm under pressure.",
+        "chessConcept": "Finding defensive tactics",
+        "body": "The monkey escapes danger through quick thinking. In chess, bad positions often contain hidden resources if you calculate calmly.",
+        "relatedPuzzleId": "puzzle-6",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-2",
+        "chapterTitle": "Chapter 2: Patience and Planning"
+      },
+      {
+        "id": "story-lion-clever-rabbit",
+        "title": "The Lion and the Clever Rabbit",
+        "subtitle": "Intelligence defeats force.",
+        "tags": [
+          "Strategy",
+          "Patience"
+        ],
+        "progress": 20,
+        "status": "in-progress",
+        "lesson": "A smaller force can win with a better plan.",
+        "chessConcept": "Strategic deflection and exploiting overconfidence",
+        "body": "The clever rabbit defeats the lion by using the lion’s pride against him. In chess, direct force is not always enough. A quiet strategic idea can redirect the opponent into defeat.",
+        "relatedPuzzleId": "puzzle-7",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-3",
+        "chapterTitle": "Chapter 3: Building a Winning Plan"
+      },
+      {
+        "id": "story-elephant-patience",
+        "title": "The Elephant’s Patience",
+        "subtitle": "Strength waits for the right moment.",
+        "tags": [
+          "Endgame",
+          "Patience"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Do not rush a winning position.",
+        "chessConcept": "Technique and conversion",
+        "body": "The elephant succeeds by moving slowly and with purpose. In chess, converting an advantage requires patience, not panic.",
+        "relatedPuzzleId": "puzzle-8",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-3",
+        "chapterTitle": "Chapter 3: Building a Winning Plan"
+      },
+      {
+        "id": "story-hare-moon",
+        "title": "The Hare and the Moon",
+        "subtitle": "Use imagination to solve difficult problems.",
+        "tags": [
+          "Creativity",
+          "Strategy"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Creative ideas can change the board.",
+        "chessConcept": "Unexpected candidate moves",
+        "body": "The hare uses imagination instead of strength. Chess creativity begins when you look beyond obvious moves.",
+        "relatedPuzzleId": "puzzle-9",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-3",
+        "chapterTitle": "Chapter 3: Building a Winning Plan"
+      },
+      {
+        "id": "story-two-headed-bird",
+        "title": "The Two-Headed Bird",
+        "subtitle": "Division creates weakness.",
+        "tags": [
+          "Fork",
+          "Double Attack"
+        ],
+        "progress": 40,
+        "status": "in-progress",
+        "lesson": "Attack two weaknesses at once.",
+        "chessConcept": "Knight fork and double attack",
+        "body": "The two-headed bird fails because its parts do not work together. In chess, disconnected pieces become targets for double attacks.",
+        "relatedPuzzleId": "puzzle-10",
+        "moduleId": "module-2",
+        "moduleTitle": "Tactical Wisdom",
+        "chapterId": "chapter-4",
+        "chapterTitle": "Chapter 1: Forks and Double Attacks"
+      },
+      {
+        "id": "story-clever-fox",
+        "title": "The Clever Fox",
+        "subtitle": "Create two problems at once.",
+        "tags": [
+          "Tactics",
+          "Timing"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "A strong tactic overloads the opponent.",
+        "chessConcept": "Double attack",
+        "body": "The fox survives by forcing enemies to choose between two dangers. This mirrors a chess double attack.",
+        "relatedPuzzleId": "puzzle-11",
+        "moduleId": "module-2",
+        "moduleTitle": "Tactical Wisdom",
+        "chapterId": "chapter-4",
+        "chapterTitle": "Chapter 1: Forks and Double Attacks"
+      },
+      {
+        "id": "story-crane-crab",
+        "title": "The Crane and the Crab",
+        "subtitle": "Punish hidden greed.",
+        "tags": [
+          "Tactics",
+          "Punishment"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Tactics appear when greed weakens coordination.",
+        "chessConcept": "Fork after overextension",
+        "body": "The crab defeats the greedy crane by recognizing the trap. In chess, greed often creates tactical targets.",
+        "relatedPuzzleId": "puzzle-12",
+        "moduleId": "module-2",
+        "moduleTitle": "Tactical Wisdom",
+        "chapterId": "chapter-4",
+        "chapterTitle": "Chapter 1: Forks and Double Attacks"
+      },
+      {
+        "id": "story-turtle-steady",
+        "title": "The Steady Turtle",
+        "subtitle": "Slow steps still reach victory.",
+        "tags": [
+          "Endgame",
+          "Technique"
+        ],
+        "progress": 15,
+        "status": "in-progress",
+        "lesson": "Improve slowly and avoid rushing.",
+        "chessConcept": "King opposition",
+        "body": "The turtle reaches safety not by speed, but by consistency. Endgames reward the same patience.",
+        "relatedPuzzleId": "puzzle-13",
+        "moduleId": "module-3",
+        "moduleTitle": "Endgame Mastery",
+        "chapterId": "chapter-7",
+        "chapterTitle": "Chapter 1: King and Pawn Wisdom"
+      },
+      {
+        "id": "story-sage-and-storm",
+        "title": "The Sage and the Storm",
+        "subtitle": "The calm mind sees the winning move.",
+        "tags": [
+          "Mindset",
+          "Focus"
+        ],
+        "progress": 5,
+        "status": "in-progress",
+        "lesson": "Emotional stability improves calculation.",
+        "chessConcept": "Practical decision-making under pressure",
+        "body": "The sage waits for the storm to pass before acting. Chess players must also pause, breathe, and calculate clearly.",
+        "relatedPuzzleId": "puzzle-14",
+        "moduleId": "module-4",
+        "moduleTitle": "Tournament Mindset",
+        "chapterId": "chapter-9",
+        "chapterTitle": "Chapter 1: Calm Under Pressure"
+      }
+    ],
+    "principles": [
+      {
+        "id": "principle-patience",
+        "name": "Patience Before Attack",
+        "category": "Strategy",
+        "learned": false,
+        "explanation": "Build pressure before forcing tactics.",
+        "examples": [
+          "Improve worst piece",
+          "Stop counterplay"
+        ],
+        "relatedStories": [
+          "story-clever-jackal"
+        ],
+        "relatedPuzzles": [
+          "puzzle-daily"
+        ]
+      },
+      {
+        "id": "principle-awareness",
+        "name": "Awareness of Threats",
+        "category": "Tactics",
+        "learned": true,
+        "explanation": "Every move should answer what changed.",
+        "examples": [
+          "Loose pieces",
+          "King safety"
+        ],
+        "relatedStories": [
+          "story-brahmin-mongoose"
+        ],
+        "relatedPuzzles": [
+          "puzzle-fork-forest"
+        ]
+      },
+      {
+        "id": "principle-endgame-calm",
+        "name": "Endgame Calm",
+        "category": "Endgame",
+        "learned": false,
+        "explanation": "Small advantages become wins through clarity.",
+        "examples": [
+          "Opposition",
+          "Passed pawns"
+        ],
+        "relatedStories": [
+          "story-tortoise-geese"
+        ],
+        "relatedPuzzles": [
+          "puzzle-pawn-race"
+        ]
+      }
+    ],
+    "puzzles": [
+      {
+        "id": "puzzle-daily",
+        "title": "Daily Puzzle",
+        "difficulty": "Medium",
+        "theme": "Fork",
+        "solved": false,
+        "reward": 25,
+        "expectedMove": "e4-e5",
+        "hint": "Look for a forcing pawn break.",
+        "explanation": "The pawn move opens the diagonal and wins material."
+      },
+      {
+        "id": "puzzle-fork-forest",
+        "title": "Fork in the Forest",
+        "difficulty": "Easy",
+        "theme": "Fork",
+        "solved": true,
+        "reward": 15,
+        "expectedMove": "g1-f3",
+        "hint": "The knight attacks two targets.",
+        "explanation": "A knight fork wins tempo and material."
+      },
+      {
+        "id": "puzzle-pawn-race",
+        "title": "Patient Pawn Race",
+        "difficulty": "Hard",
+        "theme": "Endgame",
+        "solved": false,
+        "reward": 40,
+        "expectedMove": "a2-a4",
+        "hint": "Create the outside passer.",
+        "explanation": "The outside passer distracts the king."
+      }
+    ],
+    "achievements": [
+      {
+        "id": "ach-first-puzzle",
+        "title": "First Spark",
+        "unlocked": true,
+        "progress": 100,
+        "rule": "Solve your first puzzle."
+      },
+      {
+        "id": "ach-sacrifice-master",
+        "title": "Sacrifice Master",
+        "unlocked": false,
+        "progress": 68,
+        "rule": "Solve 25 sacrifice puzzles."
+      },
+      {
+        "id": "ach-story-seeker",
+        "title": "Story Seeker",
+        "unlocked": false,
+        "progress": 50,
+        "rule": "Complete 24 stories."
+      }
+    ],
+    "analytics": {
+      "progress": [
+        {
+          "name": "Mon",
+          "value": 280
+        },
+        {
+          "name": "Tue",
+          "value": 420
+        },
+        {
+          "name": "Wed",
+          "value": 560
+        },
+        {
+          "name": "Thu",
+          "value": 800
+        },
+        {
+          "name": "Fri",
+          "value": 1050
+        },
+        {
+          "name": "Sat",
+          "value": 1260
+        },
+        {
+          "name": "Sun",
+          "value": 1500
+        }
+      ],
+      "accuracy": 87,
+      "storyCompletion": 50,
+      "weakAreas": [
+        "Time Management",
+        "Opening Knowledge"
+      ],
+      "strongAreas": [
+        "Endgame Precision",
+        "Tactical Awareness"
+      ]
+    },
+    "classes": [
+      {
+        "id": "class-advanced-a",
+        "title": "Advanced Tactics - Batch A",
+        "coach": "Coach Arvind",
+        "topic": "Sacrifices & Combinations",
+        "date": "2026-05-25",
+        "time": "5:00 PM",
+        "status": "Live Soon",
+        "meetingLink": "Live room placeholder",
+        "materials": [
+          "Sacrifice Patterns PDF"
+        ]
+      },
+      {
+        "id": "class-endgame-c",
+        "title": "Endgame Mastery - Batch C",
+        "coach": "Coach Arvind",
+        "topic": "King and Pawn Endgames",
+        "date": "2026-05-26",
+        "time": "8:00 PM",
+        "status": "Upcoming",
+        "meetingLink": "Live room placeholder",
+        "materials": [
+          "Endgame Drill Pack"
+        ]
+      }
+    ],
+    "profile": {
+      "id": "student-1",
+      "type": "The Sage",
+      "points": 1850,
+      "streak": 12,
+      "radar": [
+        {
+          "subject": "Tactical Awareness",
+          "value": 78
+        },
+        {
+          "subject": "Strategic Depth",
+          "value": 72
+        },
+        {
+          "subject": "Endgame Precision",
+          "value": 82
+        },
+        {
+          "subject": "Opening Knowledge",
+          "value": 64
+        },
+        {
+          "subject": "Time Management",
+          "value": 58
+        },
+        {
+          "subject": "Emotional Stability",
+          "value": 74
+        }
+      ],
+      "strengths": [
+        "Endgame Precision",
+        "Tactical Awareness"
+      ],
+      "weaknesses": [
+        "Time Management",
+        "Opening Knowledge"
+      ],
+      "plan": [
+        "Practice 10-minute puzzle rush twice weekly",
+        "Review one opening trap per class"
+      ]
+    },
+    "mistakes": [
+      {
+        "id": "mistake-1",
+        "puzzle": "Silent Skewer",
+        "theme": "Skewer",
+        "note": "Missed back-rank weakness",
+        "reviewed": false
+      }
+    ],
+    "storyModules": [
+      {
+        "id": "module-1",
+        "title": "Foundations of Strategy",
+        "subtitle": "Begin your chess journey with Panchatantra lessons on patience, awareness, and planning.",
+        "description": "This module introduces the core habits of a thoughtful chess player through classic Panchatantra-inspired stories.",
+        "icon": "♜",
+        "level": "Beginner",
+        "progress": 62,
+        "totalChapters": 3,
+        "totalStories": 9,
+        "unlocked": true,
+        "chapters": [
+          {
+            "id": "chapter-1",
+            "title": "Chapter 1: Awareness Before Action",
+            "subtitle": "Learn why careful observation comes before every strong move.",
+            "description": "Stories and chess examples focused on board awareness, threats, and avoiding impulsive decisions.",
+            "progress": 80,
+            "totalStories": 3,
+            "stories": [
+              {
+                "id": "story-brahmin-mongoose",
+                "title": "The Brahmin and the Mongoose",
+                "subtitle": "Think before you strike.",
+                "tags": [
+                  "Tactics",
+                  "Awareness"
+                ],
+                "progress": 100,
+                "status": "completed",
+                "lesson": "Never move without checking the full board.",
+                "chessConcept": "Blunder prevention and threat detection",
+                "body": "A loyal mongoose saves a child from danger, but the Brahmin acts too quickly and regrets his decision. In chess, the same mistake happens when a player reacts before calculating. This story teaches you to pause, inspect threats, and confirm your move before touching a piece.",
+                "relatedPuzzleId": "puzzle-1"
+              },
+              {
+                "id": "story-wise-crow",
+                "title": "The Wise Crow",
+                "subtitle": "Small observations create big victories.",
+                "tags": [
+                  "Observation",
+                  "Planning"
+                ],
+                "progress": 60,
+                "status": "in-progress",
+                "lesson": "Notice small details before forming a plan.",
+                "chessConcept": "Candidate moves and board scanning",
+                "body": "The crow survives by noticing what others ignore. Chess rewards the same skill: before choosing a move, scan checks, captures, threats, weak squares, and undefended pieces.",
+                "relatedPuzzleId": "puzzle-2"
+              },
+              {
+                "id": "story-deer-and-hunter",
+                "title": "The Deer and the Hunter",
+                "subtitle": "Danger is often hidden in plain sight.",
+                "tags": [
+                  "Defense",
+                  "Awareness"
+                ],
+                "progress": 0,
+                "status": "not-started",
+                "lesson": "Identify threats before attacking.",
+                "chessConcept": "Defensive resources",
+                "body": "The deer survives because it senses danger before it appears. In chess, strong players identify the opponent’s idea before pursuing their own attack.",
+                "relatedPuzzleId": "puzzle-3"
+              }
+            ]
+          },
+          {
+            "id": "chapter-2",
+            "title": "Chapter 2: Patience and Planning",
+            "subtitle": "Understand how patience turns small advantages into winning positions.",
+            "description": "This chapter focuses on long-term planning, restraint, and positional improvement.",
+            "progress": 50,
+            "totalStories": 3,
+            "stories": [
+              {
+                "id": "story-clever-jackal",
+                "title": "The Clever Jackal",
+                "subtitle": "The trap of greed.",
+                "tags": [
+                  "Strategy",
+                  "Patience"
+                ],
+                "progress": 75,
+                "status": "in-progress",
+                "lesson": "Greed loses games; patience wins them.",
+                "chessConcept": "Avoiding poisoned pawns and traps",
+                "body": "The clever jackal survives by refusing easy temptation. In chess, not every free pawn is truly free. This story teaches patience, calculation, and strategic restraint.",
+                "relatedPuzzleId": "puzzle-4"
+              },
+              {
+                "id": "story-tortoise-geese",
+                "title": "The Tortoise and the Geese",
+                "subtitle": "Discipline protects the plan.",
+                "tags": [
+                  "Planning",
+                  "Prophylaxis"
+                ],
+                "progress": 45,
+                "status": "in-progress",
+                "lesson": "A good plan requires self-control.",
+                "chessConcept": "Prophylaxis and positional discipline",
+                "body": "The tortoise has a path to safety but fails because he cannot remain disciplined. In chess, even a good plan collapses when you ignore your opponent’s counterplay.",
+                "relatedPuzzleId": "puzzle-5"
+              },
+              {
+                "id": "story-monkey-crocodile",
+                "title": "The Monkey and the Crocodile",
+                "subtitle": "Escape through calm calculation.",
+                "tags": [
+                  "Calculation",
+                  "Resourcefulness"
+                ],
+                "progress": 0,
+                "status": "not-started",
+                "lesson": "Stay calm under pressure.",
+                "chessConcept": "Finding defensive tactics",
+                "body": "The monkey escapes danger through quick thinking. In chess, bad positions often contain hidden resources if you calculate calmly.",
+                "relatedPuzzleId": "puzzle-6"
+              }
+            ]
+          },
+          {
+            "id": "chapter-3",
+            "title": "Chapter 3: Building a Winning Plan",
+            "subtitle": "Convert ideas into structured chess plans.",
+            "description": "Learn how to combine strategy, tactics, and patience into a complete plan.",
+            "progress": 30,
+            "totalStories": 3,
+            "stories": [
+              {
+                "id": "story-lion-clever-rabbit",
+                "title": "The Lion and the Clever Rabbit",
+                "subtitle": "Intelligence defeats force.",
+                "tags": [
+                  "Strategy",
+                  "Patience"
+                ],
+                "progress": 20,
+                "status": "in-progress",
+                "lesson": "A smaller force can win with a better plan.",
+                "chessConcept": "Strategic deflection and exploiting overconfidence",
+                "body": "The clever rabbit defeats the lion by using the lion’s pride against him. In chess, direct force is not always enough. A quiet strategic idea can redirect the opponent into defeat.",
+                "relatedPuzzleId": "puzzle-7"
+              },
+              {
+                "id": "story-elephant-patience",
+                "title": "The Elephant’s Patience",
+                "subtitle": "Strength waits for the right moment.",
+                "tags": [
+                  "Endgame",
+                  "Patience"
+                ],
+                "progress": 0,
+                "status": "not-started",
+                "lesson": "Do not rush a winning position.",
+                "chessConcept": "Technique and conversion",
+                "body": "The elephant succeeds by moving slowly and with purpose. In chess, converting an advantage requires patience, not panic.",
+                "relatedPuzzleId": "puzzle-8"
+              },
+              {
+                "id": "story-hare-moon",
+                "title": "The Hare and the Moon",
+                "subtitle": "Use imagination to solve difficult problems.",
+                "tags": [
+                  "Creativity",
+                  "Strategy"
+                ],
+                "progress": 0,
+                "status": "not-started",
+                "lesson": "Creative ideas can change the board.",
+                "chessConcept": "Unexpected candidate moves",
+                "body": "The hare uses imagination instead of strength. Chess creativity begins when you look beyond obvious moves.",
+                "relatedPuzzleId": "puzzle-9"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module-2",
+        "title": "Tactical Wisdom",
+        "subtitle": "Learn tactical motifs through animal fables and chess patterns.",
+        "description": "This module develops tactical vision using stories about alertness, opportunity, and timing.",
+        "icon": "♞",
+        "level": "Intermediate",
+        "progress": 35,
+        "totalChapters": 3,
+        "totalStories": 9,
+        "unlocked": true,
+        "chapters": [
+          {
+            "id": "chapter-4",
+            "title": "Chapter 1: Forks and Double Attacks",
+            "subtitle": "One move, two threats.",
+            "description": "Use Panchatantra lessons to understand double attacks, forks, and tactical timing.",
+            "progress": 40,
+            "totalStories": 3,
+            "stories": [
+              {
+                "id": "story-two-headed-bird",
+                "title": "The Two-Headed Bird",
+                "subtitle": "Division creates weakness.",
+                "tags": [
+                  "Fork",
+                  "Double Attack"
+                ],
+                "progress": 40,
+                "status": "in-progress",
+                "lesson": "Attack two weaknesses at once.",
+                "chessConcept": "Knight fork and double attack",
+                "body": "The two-headed bird fails because its parts do not work together. In chess, disconnected pieces become targets for double attacks.",
+                "relatedPuzzleId": "puzzle-10"
+              },
+              {
+                "id": "story-clever-fox",
+                "title": "The Clever Fox",
+                "subtitle": "Create two problems at once.",
+                "tags": [
+                  "Tactics",
+                  "Timing"
+                ],
+                "progress": 0,
+                "status": "not-started",
+                "lesson": "A strong tactic overloads the opponent.",
+                "chessConcept": "Double attack",
+                "body": "The fox survives by forcing enemies to choose between two dangers. This mirrors a chess double attack.",
+                "relatedPuzzleId": "puzzle-11"
+              },
+              {
+                "id": "story-crane-crab",
+                "title": "The Crane and the Crab",
+                "subtitle": "Punish hidden greed.",
+                "tags": [
+                  "Tactics",
+                  "Punishment"
+                ],
+                "progress": 0,
+                "status": "not-started",
+                "lesson": "Tactics appear when greed weakens coordination.",
+                "chessConcept": "Fork after overextension",
+                "body": "The crab defeats the greedy crane by recognizing the trap. In chess, greed often creates tactical targets.",
+                "relatedPuzzleId": "puzzle-12"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module-3",
+        "title": "Endgame Mastery",
+        "subtitle": "Master calm conversion, king activity, and pawn endings.",
+        "description": "This module teaches endgame patience and precision through slow, wise Panchatantra lessons.",
+        "icon": "♚",
+        "level": "Advanced",
+        "progress": 15,
+        "totalChapters": 2,
+        "totalStories": 6,
+        "unlocked": true,
+        "chapters": [
+          {
+            "id": "chapter-7",
+            "title": "Chapter 1: King and Pawn Wisdom",
+            "subtitle": "Small advantages need exact technique.",
+            "description": "Learn opposition, passed pawns, king activity, and endgame discipline.",
+            "progress": 15,
+            "totalStories": 3,
+            "stories": [
+              {
+                "id": "story-turtle-steady",
+                "title": "The Steady Turtle",
+                "subtitle": "Slow steps still reach victory.",
+                "tags": [
+                  "Endgame",
+                  "Technique"
+                ],
+                "progress": 15,
+                "status": "in-progress",
+                "lesson": "Improve slowly and avoid rushing.",
+                "chessConcept": "King opposition",
+                "body": "The turtle reaches safety not by speed, but by consistency. Endgames reward the same patience.",
+                "relatedPuzzleId": "puzzle-13"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module-4",
+        "title": "Tournament Mindset",
+        "subtitle": "Build emotional stability, focus, and practical decision-making.",
+        "description": "This module prepares students to think clearly during games and recover from mistakes.",
+        "icon": "♛",
+        "level": "Advanced",
+        "progress": 5,
+        "totalChapters": 2,
+        "totalStories": 6,
+        "unlocked": true,
+        "chapters": [
+          {
+            "id": "chapter-9",
+            "title": "Chapter 1: Calm Under Pressure",
+            "subtitle": "Strong players control emotion before they control the board.",
+            "description": "Stories about discipline, focus, time pressure, and practical play.",
+            "progress": 5,
+            "totalStories": 3,
+            "stories": [
+              {
+                "id": "story-sage-and-storm",
+                "title": "The Sage and the Storm",
+                "subtitle": "The calm mind sees the winning move.",
+                "tags": [
+                  "Mindset",
+                  "Focus"
+                ],
+                "progress": 5,
+                "status": "in-progress",
+                "lesson": "Emotional stability improves calculation.",
+                "chessConcept": "Practical decision-making under pressure",
+                "body": "The sage waits for the storm to pass before acting. Chess players must also pause, breathe, and calculate clearly.",
+                "relatedPuzzleId": "puzzle-14"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "coach": {
+    "students": [
+      {
+        "id": "student-1",
+        "name": "Arjun Sharma",
+        "type": "Strategic Thinker",
+        "progress": 84,
+        "trend": 7,
+        "status": "active",
+        "class": "Advanced Tactics - Batch A",
+        "notes": "Needs focused calculation drills."
+      },
+      {
+        "id": "student-2",
+        "name": "Vihaan Mehta",
+        "type": "Tactical Hunter",
+        "progress": 72,
+        "trend": 5,
+        "status": "active",
+        "class": "Advanced Tactics - Batch A",
+        "notes": "Needs focused calculation drills."
+      },
+      {
+        "id": "student-3",
+        "name": "Ananya Singh",
+        "type": "Positional Player",
+        "progress": 69,
+        "trend": -2,
+        "status": "active",
+        "class": "Advanced Tactics - Batch A",
+        "notes": "Needs focused calculation drills."
+      },
+      {
+        "id": "student-4",
+        "name": "Rohan Verma",
+        "type": "Endgame Specialist",
+        "progress": 63,
+        "trend": 6,
+        "status": "active",
+        "class": "Endgame Mastery - Batch C",
+        "notes": "Needs focused calculation drills."
+      },
+      {
+        "id": "student-5",
+        "name": "Ishaan Kapoor",
+        "type": "Aggressive Attacker",
+        "progress": 58,
+        "trend": -1,
+        "status": "inactive",
+        "class": "Endgame Mastery - Batch C",
+        "notes": "Needs focused calculation drills."
+      }
+    ],
+    "classes": [
+      {
+        "id": "coach-class-1",
+        "title": "Advanced Tactics - Batch A",
+        "batch": "A",
+        "topic": "Sacrifices & Combinations",
+        "date": "2026-05-25",
+        "time": "5:00 PM",
+        "duration": "60 min",
+        "students": [
+          "Arjun Sharma",
+          "Vihaan Mehta"
+        ],
+        "meetingLink": "https://meet.example/chess-a",
+        "status": "live",
+        "resources": [
+          "Sacrifice Patterns PDF"
+        ],
+        "attendance": []
+      },
+      {
+        "id": "coach-class-2",
+        "title": "Intermediate Class - Batch B",
+        "batch": "B",
+        "topic": "Positional Play",
+        "date": "2026-05-25",
+        "time": "6:30 PM",
+        "duration": "60 min",
+        "students": [
+          "Ananya Singh"
+        ],
+        "meetingLink": "https://meet.example/chess-b",
+        "status": "upcoming",
+        "resources": [],
+        "attendance": []
+      }
+    ],
+    "liveSessions": [
+      {
+        "id": "session-1",
+        "title": "Advanced Tactics - Batch A",
+        "status": "live",
+        "attendees": [
+          "Arjun Sharma",
+          "Vihaan Mehta"
+        ]
+      },
+      {
+        "id": "session-2",
+        "title": "Endgame Mastery - Batch C",
+        "status": "upcoming",
+        "attendees": [
+          "Rohan Verma"
+        ]
+      }
+    ],
+    "assignments": [
+      {
+        "id": "assign-1",
+        "title": "Knight Fork Drill",
+        "description": "Solve 12 fork puzzles.",
+        "dueDate": "2026-05-28",
+        "targetClass": "Advanced Tactics - Batch A",
+        "submissions": 8
+      }
+    ],
+    "submissions": [
+      {
+        "id": "sub-1",
+        "student": "Arjun Sharma",
+        "assignment": "Knight Fork Drill",
+        "reviewed": false,
+        "feedback": ""
+      }
+    ],
+    "resources": [
+      {
+        "id": "res-1",
+        "title": "Sacrifice Patterns PDF",
+        "type": "PDF",
+        "uploadedAt": "2026-05-18"
+      },
+      {
+        "id": "res-2",
+        "title": "Endgame Drill Pack",
+        "type": "Worksheet",
+        "uploadedAt": "2026-05-17"
+      }
+    ],
+    "messages": [
+      {
+        "id": "conv-1",
+        "with": "Arjun Sharma",
+        "messages": [
+          {
+            "from": "Arjun Sharma",
+            "text": "Can I get extra endgame puzzles?"
+          },
+          {
+            "from": "Coach Arvind",
+            "text": "Yes, I will assign a set today."
+          }
+        ]
+      }
+    ],
+    "reports": [],
+    "settings": {
+      "name": "Coach Arvind",
+      "email": "coach@panchatantra.test",
+      "notifications": true,
+      "theme": "classic"
+    }
+  },
+  "admin": {
+    "users": [
+      {
+        "id": "user-1",
+        "name": "Arjun Sharma",
+        "role": "student",
+        "status": "active",
+        "email": "arjun@panchatantra.test"
+      },
+      {
+        "id": "user-2",
+        "name": "Coach Arvind",
+        "role": "coach",
+        "status": "active",
+        "email": "coach@panchatantra.test"
+      },
+      {
+        "id": "user-3",
+        "name": "Admin",
+        "role": "admin",
+        "status": "active",
+        "email": "admin@panchatantra.test"
+      }
+    ],
+    "curriculum": {
+      "modules": [
+        {
+          "id": "module-1",
+          "title": "The Lion's Wisdom",
+          "order": 1,
+          "chapters": 3
+        },
+        {
+          "id": "module-2",
+          "title": "The Monkey's Mind",
+          "order": 2,
+          "chapters": 3
+        }
+      ],
+      "chapters": [
+        {
+          "id": "chapter-1",
+          "title": "Trap of Greed",
+          "moduleId": "module-1",
+          "order": 1
+        }
+      ]
+    },
+    "stories": [
+      {
+        "id": "story-brahmin-mongoose",
+        "title": "The Brahmin and the Mongoose",
+        "subtitle": "Think before you strike.",
+        "tags": [
+          "Tactics",
+          "Awareness"
+        ],
+        "progress": 100,
+        "status": "completed",
+        "lesson": "Never move without checking the full board.",
+        "chessConcept": "Blunder prevention and threat detection",
+        "body": "A loyal mongoose saves a child from danger, but the Brahmin acts too quickly and regrets his decision. In chess, the same mistake happens when a player reacts before calculating. This story teaches you to pause, inspect threats, and confirm your move before touching a piece.",
+        "relatedPuzzleId": "puzzle-1",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-1",
+        "chapterTitle": "Chapter 1: Awareness Before Action"
+      },
+      {
+        "id": "story-wise-crow",
+        "title": "The Wise Crow",
+        "subtitle": "Small observations create big victories.",
+        "tags": [
+          "Observation",
+          "Planning"
+        ],
+        "progress": 60,
+        "status": "in-progress",
+        "lesson": "Notice small details before forming a plan.",
+        "chessConcept": "Candidate moves and board scanning",
+        "body": "The crow survives by noticing what others ignore. Chess rewards the same skill: before choosing a move, scan checks, captures, threats, weak squares, and undefended pieces.",
+        "relatedPuzzleId": "puzzle-2",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-1",
+        "chapterTitle": "Chapter 1: Awareness Before Action"
+      },
+      {
+        "id": "story-deer-and-hunter",
+        "title": "The Deer and the Hunter",
+        "subtitle": "Danger is often hidden in plain sight.",
+        "tags": [
+          "Defense",
+          "Awareness"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Identify threats before attacking.",
+        "chessConcept": "Defensive resources",
+        "body": "The deer survives because it senses danger before it appears. In chess, strong players identify the opponent’s idea before pursuing their own attack.",
+        "relatedPuzzleId": "puzzle-3",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-1",
+        "chapterTitle": "Chapter 1: Awareness Before Action"
+      },
+      {
+        "id": "story-clever-jackal",
+        "title": "The Clever Jackal",
+        "subtitle": "The trap of greed.",
+        "tags": [
+          "Strategy",
+          "Patience"
+        ],
+        "progress": 75,
+        "status": "in-progress",
+        "lesson": "Greed loses games; patience wins them.",
+        "chessConcept": "Avoiding poisoned pawns and traps",
+        "body": "The clever jackal survives by refusing easy temptation. In chess, not every free pawn is truly free. This story teaches patience, calculation, and strategic restraint.",
+        "relatedPuzzleId": "puzzle-4",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-2",
+        "chapterTitle": "Chapter 2: Patience and Planning"
+      },
+      {
+        "id": "story-tortoise-geese",
+        "title": "The Tortoise and the Geese",
+        "subtitle": "Discipline protects the plan.",
+        "tags": [
+          "Planning",
+          "Prophylaxis"
+        ],
+        "progress": 45,
+        "status": "in-progress",
+        "lesson": "A good plan requires self-control.",
+        "chessConcept": "Prophylaxis and positional discipline",
+        "body": "The tortoise has a path to safety but fails because he cannot remain disciplined. In chess, even a good plan collapses when you ignore your opponent’s counterplay.",
+        "relatedPuzzleId": "puzzle-5",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-2",
+        "chapterTitle": "Chapter 2: Patience and Planning"
+      },
+      {
+        "id": "story-monkey-crocodile",
+        "title": "The Monkey and the Crocodile",
+        "subtitle": "Escape through calm calculation.",
+        "tags": [
+          "Calculation",
+          "Resourcefulness"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Stay calm under pressure.",
+        "chessConcept": "Finding defensive tactics",
+        "body": "The monkey escapes danger through quick thinking. In chess, bad positions often contain hidden resources if you calculate calmly.",
+        "relatedPuzzleId": "puzzle-6",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-2",
+        "chapterTitle": "Chapter 2: Patience and Planning"
+      },
+      {
+        "id": "story-lion-clever-rabbit",
+        "title": "The Lion and the Clever Rabbit",
+        "subtitle": "Intelligence defeats force.",
+        "tags": [
+          "Strategy",
+          "Patience"
+        ],
+        "progress": 20,
+        "status": "in-progress",
+        "lesson": "A smaller force can win with a better plan.",
+        "chessConcept": "Strategic deflection and exploiting overconfidence",
+        "body": "The clever rabbit defeats the lion by using the lion’s pride against him. In chess, direct force is not always enough. A quiet strategic idea can redirect the opponent into defeat.",
+        "relatedPuzzleId": "puzzle-7",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-3",
+        "chapterTitle": "Chapter 3: Building a Winning Plan"
+      },
+      {
+        "id": "story-elephant-patience",
+        "title": "The Elephant’s Patience",
+        "subtitle": "Strength waits for the right moment.",
+        "tags": [
+          "Endgame",
+          "Patience"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Do not rush a winning position.",
+        "chessConcept": "Technique and conversion",
+        "body": "The elephant succeeds by moving slowly and with purpose. In chess, converting an advantage requires patience, not panic.",
+        "relatedPuzzleId": "puzzle-8",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-3",
+        "chapterTitle": "Chapter 3: Building a Winning Plan"
+      },
+      {
+        "id": "story-hare-moon",
+        "title": "The Hare and the Moon",
+        "subtitle": "Use imagination to solve difficult problems.",
+        "tags": [
+          "Creativity",
+          "Strategy"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Creative ideas can change the board.",
+        "chessConcept": "Unexpected candidate moves",
+        "body": "The hare uses imagination instead of strength. Chess creativity begins when you look beyond obvious moves.",
+        "relatedPuzzleId": "puzzle-9",
+        "moduleId": "module-1",
+        "moduleTitle": "Foundations of Strategy",
+        "chapterId": "chapter-3",
+        "chapterTitle": "Chapter 3: Building a Winning Plan"
+      },
+      {
+        "id": "story-two-headed-bird",
+        "title": "The Two-Headed Bird",
+        "subtitle": "Division creates weakness.",
+        "tags": [
+          "Fork",
+          "Double Attack"
+        ],
+        "progress": 40,
+        "status": "in-progress",
+        "lesson": "Attack two weaknesses at once.",
+        "chessConcept": "Knight fork and double attack",
+        "body": "The two-headed bird fails because its parts do not work together. In chess, disconnected pieces become targets for double attacks.",
+        "relatedPuzzleId": "puzzle-10",
+        "moduleId": "module-2",
+        "moduleTitle": "Tactical Wisdom",
+        "chapterId": "chapter-4",
+        "chapterTitle": "Chapter 1: Forks and Double Attacks"
+      },
+      {
+        "id": "story-clever-fox",
+        "title": "The Clever Fox",
+        "subtitle": "Create two problems at once.",
+        "tags": [
+          "Tactics",
+          "Timing"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "A strong tactic overloads the opponent.",
+        "chessConcept": "Double attack",
+        "body": "The fox survives by forcing enemies to choose between two dangers. This mirrors a chess double attack.",
+        "relatedPuzzleId": "puzzle-11",
+        "moduleId": "module-2",
+        "moduleTitle": "Tactical Wisdom",
+        "chapterId": "chapter-4",
+        "chapterTitle": "Chapter 1: Forks and Double Attacks"
+      },
+      {
+        "id": "story-crane-crab",
+        "title": "The Crane and the Crab",
+        "subtitle": "Punish hidden greed.",
+        "tags": [
+          "Tactics",
+          "Punishment"
+        ],
+        "progress": 0,
+        "status": "not-started",
+        "lesson": "Tactics appear when greed weakens coordination.",
+        "chessConcept": "Fork after overextension",
+        "body": "The crab defeats the greedy crane by recognizing the trap. In chess, greed often creates tactical targets.",
+        "relatedPuzzleId": "puzzle-12",
+        "moduleId": "module-2",
+        "moduleTitle": "Tactical Wisdom",
+        "chapterId": "chapter-4",
+        "chapterTitle": "Chapter 1: Forks and Double Attacks"
+      },
+      {
+        "id": "story-turtle-steady",
+        "title": "The Steady Turtle",
+        "subtitle": "Slow steps still reach victory.",
+        "tags": [
+          "Endgame",
+          "Technique"
+        ],
+        "progress": 15,
+        "status": "in-progress",
+        "lesson": "Improve slowly and avoid rushing.",
+        "chessConcept": "King opposition",
+        "body": "The turtle reaches safety not by speed, but by consistency. Endgames reward the same patience.",
+        "relatedPuzzleId": "puzzle-13",
+        "moduleId": "module-3",
+        "moduleTitle": "Endgame Mastery",
+        "chapterId": "chapter-7",
+        "chapterTitle": "Chapter 1: King and Pawn Wisdom"
+      },
+      {
+        "id": "story-sage-and-storm",
+        "title": "The Sage and the Storm",
+        "subtitle": "The calm mind sees the winning move.",
+        "tags": [
+          "Mindset",
+          "Focus"
+        ],
+        "progress": 5,
+        "status": "in-progress",
+        "lesson": "Emotional stability improves calculation.",
+        "chessConcept": "Practical decision-making under pressure",
+        "body": "The sage waits for the storm to pass before acting. Chess players must also pause, breathe, and calculate clearly.",
+        "relatedPuzzleId": "puzzle-14",
+        "moduleId": "module-4",
+        "moduleTitle": "Tournament Mindset",
+        "chapterId": "chapter-9",
+        "chapterTitle": "Chapter 1: Calm Under Pressure"
+      }
+    ],
+    "principles": [
+      {
+        "id": "principle-patience",
+        "name": "Patience Before Attack",
+        "category": "Strategy",
+        "learned": false,
+        "explanation": "Build pressure before forcing tactics.",
+        "examples": [
+          "Improve worst piece",
+          "Stop counterplay"
+        ],
+        "relatedStories": [
+          "story-clever-jackal"
+        ],
+        "relatedPuzzles": [
+          "puzzle-daily"
+        ]
+      },
+      {
+        "id": "principle-awareness",
+        "name": "Awareness of Threats",
+        "category": "Tactics",
+        "learned": true,
+        "explanation": "Every move should answer what changed.",
+        "examples": [
+          "Loose pieces",
+          "King safety"
+        ],
+        "relatedStories": [
+          "story-brahmin-mongoose"
+        ],
+        "relatedPuzzles": [
+          "puzzle-fork-forest"
+        ]
+      },
+      {
+        "id": "principle-endgame-calm",
+        "name": "Endgame Calm",
+        "category": "Endgame",
+        "learned": false,
+        "explanation": "Small advantages become wins through clarity.",
+        "examples": [
+          "Opposition",
+          "Passed pawns"
+        ],
+        "relatedStories": [
+          "story-tortoise-geese"
+        ],
+        "relatedPuzzles": [
+          "puzzle-pawn-race"
+        ]
+      }
+    ],
+    "puzzles": [
+      {
+        "id": "puzzle-daily",
+        "title": "Daily Puzzle",
+        "difficulty": "Medium",
+        "theme": "Fork",
+        "solved": false,
+        "reward": 25,
+        "expectedMove": "e4-e5",
+        "hint": "Look for a forcing pawn break.",
+        "explanation": "The pawn move opens the diagonal and wins material."
+      },
+      {
+        "id": "puzzle-fork-forest",
+        "title": "Fork in the Forest",
+        "difficulty": "Easy",
+        "theme": "Fork",
+        "solved": true,
+        "reward": 15,
+        "expectedMove": "g1-f3",
+        "hint": "The knight attacks two targets.",
+        "explanation": "A knight fork wins tempo and material."
+      },
+      {
+        "id": "puzzle-pawn-race",
+        "title": "Patient Pawn Race",
+        "difficulty": "Hard",
+        "theme": "Endgame",
+        "solved": false,
+        "reward": 40,
+        "expectedMove": "a2-a4",
+        "hint": "Create the outside passer.",
+        "explanation": "The outside passer distracts the king."
+      }
+    ],
+    "classes": [
+      {
+        "id": "coach-class-1",
+        "title": "Advanced Tactics - Batch A",
+        "batch": "A",
+        "topic": "Sacrifices & Combinations",
+        "date": "2026-05-25",
+        "time": "5:00 PM",
+        "duration": "60 min",
+        "students": [
+          "Arjun Sharma",
+          "Vihaan Mehta"
+        ],
+        "meetingLink": "https://meet.example/chess-a",
+        "status": "live",
+        "resources": [
+          "Sacrifice Patterns PDF"
+        ],
+        "attendance": []
+      },
+      {
+        "id": "coach-class-2",
+        "title": "Intermediate Class - Batch B",
+        "batch": "B",
+        "topic": "Positional Play",
+        "date": "2026-05-25",
+        "time": "6:30 PM",
+        "duration": "60 min",
+        "students": [
+          "Ananya Singh"
+        ],
+        "meetingLink": "https://meet.example/chess-b",
+        "status": "upcoming",
+        "resources": [],
+        "attendance": []
+      }
+    ],
+    "achievements": [
+      {
+        "id": "ach-first-puzzle",
+        "title": "First Spark",
+        "unlocked": true,
+        "progress": 100,
+        "rule": "Solve your first puzzle."
+      },
+      {
+        "id": "ach-sacrifice-master",
+        "title": "Sacrifice Master",
+        "unlocked": false,
+        "progress": 68,
+        "rule": "Solve 25 sacrifice puzzles."
+      },
+      {
+        "id": "ach-story-seeker",
+        "title": "Story Seeker",
+        "unlocked": false,
+        "progress": 50,
+        "rule": "Complete 24 stories."
+      }
+    ],
+    "analytics": {
+      "topbar": {
+        "title": "Welcome back, Admin 👑",
+        "subtitle": "Here's what's happening in your academy today.",
+        "cta": "Export Report"
+      },
+      "stats": [
+        {
+          "label": "Total Users",
+          "value": "2,458",
+          "trend": "+12.5% vs last month",
+          "icon": "groups",
+          "color": "purple"
+        },
+        {
+          "label": "Active Students",
+          "value": "1,896",
+          "trend": "+9.3% vs last month",
+          "icon": "school",
+          "color": "green"
+        },
+        {
+          "label": "Total Stories",
+          "value": "48",
+          "subtitle": "4 Modules · 12 Chapters",
+          "icon": "book",
+          "color": "blue"
+        },
+        {
+          "label": "Total Puzzles",
+          "value": "1,284",
+          "trend": "+82 added this month",
+          "icon": "puzzle",
+          "color": "gold"
+        },
+        {
+          "label": "Achievements Unlocked",
+          "value": "8,732",
+          "trend": "+18.7% vs last month",
+          "icon": "trophy",
+          "color": "red"
+        }
+      ],
+      "userGrowth": [
+        {
+          "name": "Apr 26",
+          "total": 1200,
+          "active": 700
+        },
+        {
+          "name": "Apr 30",
+          "total": 1450,
+          "active": 900
+        },
+        {
+          "name": "May 4",
+          "total": 1700,
+          "active": 1050
+        },
+        {
+          "name": "May 8",
+          "total": 1950,
+          "active": 1250
+        },
+        {
+          "name": "May 12",
+          "total": 2100,
+          "active": 1375
+        },
+        {
+          "name": "May 16",
+          "total": 2280,
+          "active": 1520
+        },
+        {
+          "name": "May 20",
+          "total": 2420,
+          "active": 1700
+        },
+        {
+          "name": "May 25",
+          "total": 2550,
+          "active": 1820
+        }
+      ],
+      "roles": [
+        {
+          "name": "Students",
+          "value": 1896,
+          "percent": "77.1%",
+          "color": "#111827"
+        },
+        {
+          "name": "Coaches",
+          "value": 342,
+          "percent": "13.9%",
+          "color": "#D6A84F"
+        },
+        {
+          "name": "Admins",
+          "value": 78,
+          "percent": "3.2%",
+          "color": "#7C5CFF"
+        },
+        {
+          "name": "Parents",
+          "value": 142,
+          "percent": "5.8%",
+          "color": "#45A886"
+        }
+      ],
+      "recentActivity": [
+        {
+          "title": "New student registered",
+          "detail": "Arjun Sharma",
+          "time": "2 min ago",
+          "icon": "person"
+        },
+        {
+          "title": "New story published",
+          "detail": "The Wise Elephant",
+          "time": "15 min ago",
+          "icon": "book"
+        },
+        {
+          "title": "New puzzle added",
+          "detail": "Fork in the Forest",
+          "time": "1 hr ago",
+          "icon": "puzzle"
+        },
+        {
+          "title": "New class created",
+          "detail": "Advanced Tactics - Batch 12",
+          "time": "2 hr ago",
+          "icon": "school"
+        },
+        {
+          "title": "Achievement unlocked",
+          "detail": "25 students unlocked “Sacrifice Master”",
+          "time": "3 hr ago",
+          "icon": "trophy"
+        }
+      ],
+      "content": [
+        {
+          "label": "Modules",
+          "value": "4"
+        },
+        {
+          "label": "Chapters",
+          "value": "12"
+        },
+        {
+          "label": "Stories",
+          "value": "48"
+        },
+        {
+          "label": "Principles",
+          "value": "36"
+        },
+        {
+          "label": "Puzzles",
+          "value": "1,284"
+        }
+      ],
+      "topModules": [
+        {
+          "module": "The Lion's Wisdom",
+          "completion": 78,
+          "students": "1,245"
+        },
+        {
+          "module": "The Monkey's Mind",
+          "completion": 68,
+          "students": "1,032"
+        },
+        {
+          "module": "The Elephant's Patience",
+          "completion": 65,
+          "students": "980"
+        },
+        {
+          "module": "The Tortoise's Strategy",
+          "completion": 59,
+          "students": "842"
+        }
+      ],
+      "engagement": {
+        "score": 84,
+        "trend": "+14% vs last month",
+        "session": "32m 45s"
+      },
+      "performance": [
+        {
+          "label": "Completion Rate",
+          "value": "72.6%",
+          "trend": "+8.4%"
+        },
+        {
+          "label": "Puzzles Solved",
+          "value": "12,842",
+          "trend": "+15.3%"
+        },
+        {
+          "label": "Brilliant Moves",
+          "value": "1,245",
+          "trend": "+22.6%"
+        },
+        {
+          "label": "Average Rating",
+          "value": "1563",
+          "trend": "+41"
+        },
+        {
+          "label": "Retention Rate",
+          "value": "89.2%",
+          "trend": "+6.7%"
+        }
+      ]
+    },
+    "reports": [],
+    "rolesPermissions": {
+      "Admin": {
+        "users": true,
+        "curriculum": true,
+        "reports": true,
+        "settings": true
+      },
+      "Coach": {
+        "students": true,
+        "classes": true,
+        "reports": true,
+        "settings": false
+      },
+      "Student": {
+        "stories": true,
+        "puzzles": true,
+        "analytics": true,
+        "settings": true
+      },
+      "Parent": {
+        "stories": false,
+        "puzzles": false,
+        "analytics": true,
+        "settings": true
+      }
+    },
+    "settings": {
+      "academyName": "Chess by Panchatantra",
+      "tagline": "Wisdom Meets Strategy",
+      "notifications": true
+    }
+  },
+  "actionLog": [
+    {
+      "id": "log-1779083057047",
+      "role": "student",
+      "text": "Updated story The Clever Jackal",
+      "time": "2026-05-18T05:44:17.047Z"
+    },
+    {
+      "id": "log-1779083045102",
+      "role": "student",
+      "text": "Updated story The Clever Jackal",
+      "time": "2026-05-18T05:44:05.102Z"
+    }
+  ]
+}
