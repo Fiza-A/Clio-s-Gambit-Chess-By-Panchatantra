@@ -514,12 +514,31 @@ export function AdminCrudPage({ title, resource, fields, onView }) {
   return <PageShell role="admin" title={title}><Button mb={4} onClick={() => { setEditing(null); modal.onOpen(); }}>Add {title.slice(0, -1)}</Button>{!data ? <LoadingState /> : <DataTable items={data} columns={columns.length ? columns : [{ key: 'id', label: 'ID' }]} onView={onView} onEdit={(item) => { setEditing(item); modal.onOpen(); }} onDelete={async (item) => { await adminApi.remove(resource, item.id); toast({ title: 'Deleted', status: 'info' }); reload(); }} />}<FormModal isOpen={modal.isOpen} onClose={modal.onClose} title={`${editing ? 'Edit' : 'Add'} ${title}`} fields={fields} initialValues={editing || {}} onSubmit={save} /></PageShell>;
 }
 
+const PrincipleBadges = ({ principleIds, allPrinciples }) => {
+  if (!principleIds || principleIds.length === 0) {
+    return <Text fontSize="xs" color="brand.muted" fontStyle="italic">No principles</Text>;
+  }
+  return (
+    <HStack spacing={1} flexWrap="wrap">
+      {principleIds.map(id => {
+        const p = allPrinciples.find(ap => ap.id === id);
+        return p ? (
+          <Badge key={id} bg="#FBF1D5" color="brand.goldDark" fontSize="2xs" px={2} borderRadius="full">
+            {p.name}
+          </Badge>
+        ) : null;
+      })}
+    </HStack>
+  );
+};
+
 export function AdminCurriculum() {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload, loading } = useLoad(() => adminApi.curriculum(), []);
   const [activeTab, setActiveTab] = useState(0);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState('');
 
   const handleSave = async (values) => {
     try {
@@ -534,7 +553,7 @@ export function AdminCurriculum() {
       modal.onClose();
       reload();
     } catch (err) {
-      toast({ title: 'Error saving', description: err.message, status: 'error' });
+      toast({ title: 'Error saving', description: err.response?.data?.error || err.message, status: 'error' });
     }
   };
 
@@ -546,30 +565,49 @@ export function AdminCurriculum() {
       toast({ title: 'Deleted successfully', status: 'success' });
       reload();
     } catch (err) {
-      toast({ title: 'Error deleting', description: err.message, status: 'error' });
+      toast({ title: 'Error deleting', description: err.response?.data?.error || err.message, status: 'error' });
     }
   };
 
-  const fields = [
-    [
-      { name: 'title', label: 'Module Title', required: true },
-      { name: 'subtitle', label: 'Subtitle' },
-      { name: 'level', label: 'Level', options: ['Beginner', 'Intermediate', 'Advanced'] },
-      { name: 'order_index', label: 'Order', type: 'number' },
-    ],
-    [
-      { name: 'title', label: 'Chapter Title', required: true },
-      { name: 'module_id', label: 'Module', required: true, options: (data?.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
-      { name: 'order_index', label: 'Order', type: 'number' },
-    ],
-    [
-      { name: 'title', label: 'Story Title', required: true },
-      { name: 'chapter_id', label: 'Chapter', required: true, options: (data?.chapters || []).map(c => ({ label: c.title, value: c.chapter_id })) },
-      { name: 'description', label: 'Short Description', type: 'textarea' },
-      { name: 'content', label: 'Story Content', type: 'textarea' },
-      { name: 'order_index', label: 'Order', type: 'number' },
-    ]
-  ][activeTab];
+  const fields = useMemo(() => {
+    return (currentValues) => {
+      if (!data) return [];
+      return [
+        [
+          { name: 'title', label: 'Module Title', required: true },
+          { name: 'subtitle', label: 'Subtitle' },
+          { name: 'level', label: 'Level', options: ['Beginner', 'Intermediate', 'Advanced'] },
+          { name: 'order_index', label: 'Order', type: 'number' },
+        ],
+        [
+          { name: 'title', label: 'Chapter Title', required: true },
+          { name: 'module_id', label: 'Module', required: true, options: (data.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
+          { name: 'order_index', label: 'Order', type: 'number' },
+        ],
+        [
+          { name: 'title', label: 'Story Title', required: true },
+          { name: 'module_id', label: 'Module', required: true, options: (data.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
+          { 
+            name: 'chapter_id', 
+            label: 'Chapter', 
+            required: true, 
+            options: (data.chapters || [])
+              .filter(c => !currentValues.module_id || c.module_id === currentValues.module_id)
+              .map(c => ({ label: c.title, value: c.chapter_id })) 
+          },
+          { name: 'description', label: 'Short Description', type: 'textarea' },
+          { name: 'content', label: 'Story Content', type: 'textarea' },
+          { name: 'principle_ids', label: 'Linked Principles', type: 'multiselect', options: (data.principles || []).map(p => ({ label: p.name, value: p.id })) },
+          { name: 'status', label: 'Status', options: ['published', 'draft'] },
+          { name: 'order_index', label: 'Order', type: 'number' },
+        ]
+      ][activeTab];
+    };
+  }, [data, activeTab]);
+
+  const filteredModules = (data?.modules || []).filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
+  const filteredChapters = (data?.chapters || []).filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
+  const filteredStories = (data?.stories || []).filter(s => s.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <PageShell role="admin" title="Curriculum">
@@ -577,6 +615,8 @@ export function AdminCurriculum() {
         <LoadingState />
       ) : (
         <VStack align="stretch" spacing={6}>
+          <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
+          
           <Tabs index={activeTab} onChange={setActiveTab} variant="enclosed">
             <TabList>
               <Tab>Modules</Tab>
@@ -585,9 +625,9 @@ export function AdminCurriculum() {
             </TabList>
             <TabPanels>
               <TabPanel px={0} pt={6}>
-                <Button mb={4} colorScheme="brand" onClick={() => { setEditing(null); modal.onOpen(); }}>Add Module</Button>
+                <Button mb={6} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => { setEditing(null); modal.onOpen(); }}>Add Module</Button>
                 <DataTable
-                  items={data?.modules || []}
+                  items={filteredModules}
                   columns={[
                     { key: 'title', label: 'MODULE', bold: true },
                     { key: 'level', label: 'LEVEL', badge: true },
@@ -595,37 +635,76 @@ export function AdminCurriculum() {
                   ]}
                   onEdit={(item) => { setEditing(item); modal.onOpen(); }}
                   onDelete={handleDelete}
-                  onView={(item) => toast({ title: `Viewing ${item.title}`, status: 'info' })}
                 />
               </TabPanel>
+              
               <TabPanel px={0} pt={6}>
-                <Button mb={4} colorScheme="brand" onClick={() => { setEditing(null); modal.onOpen(); }}>Add Chapter</Button>
-                <DataTable
-                  items={data?.chapters || []}
-                  columns={[
-                    { key: 'title', label: 'CHAPTER', bold: true },
-                    { key: 'module_name', label: 'MODULE' },
-                    { key: 'order_index', label: 'ORDER' },
-                  ]}
-                  onEdit={(item) => { setEditing(item); modal.onOpen(); }}
-                  onDelete={handleDelete}
-                  onView={(item) => toast({ title: `Viewing ${item.title}`, status: 'info' })}
-                />
+                <Button mb={6} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => { setEditing(null); modal.onOpen(); }}>Add Chapter</Button>
+                {filteredModules.map(module => {
+                  const moduleChapters = filteredChapters.filter(c => c.module_id === module.module_id);
+                  return (
+                    <Box key={module.module_id} mb={8} p={5} bg="#FFFDF8" borderRadius="14px" border="1px solid rgba(214,168,79,0.25)">
+                      <Flex justify="space-between" align="center" mb={4}>
+                        <Box>
+                          <Heading size="md" color="brand.navy">{module.title}</Heading>
+                          <Text color="brand.muted" fontSize="sm">{module.subtitle || 'No description'}</Text>
+                        </Box>
+                        <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
+                          {moduleChapters.length} Chapters
+                        </Badge>
+                      </Flex>
+                      {moduleChapters.length > 0 ? (
+                        <DataTable
+                          items={moduleChapters}
+                          columns={[
+                            { key: 'order_index', label: 'ORDER' },
+                            { key: 'title', label: 'CHAPTER', bold: true },
+                            { key: 'storiesCount', label: 'STORIES' },
+                          ]}
+                          onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                          onDelete={handleDelete}
+                        />
+                      ) : (
+                        <Text color="brand.muted" fontStyle="italic" py={4}>No chapters added to this module yet.</Text>
+                      )}
+                    </Box>
+                  );
+                })}
               </TabPanel>
+              
               <TabPanel px={0} pt={6}>
-                <Button mb={4} colorScheme="brand" onClick={() => { setEditing(null); modal.onOpen(); }}>Add Story</Button>
-                <DataTable
-                  items={data?.stories || []}
-                  columns={[
-                    { key: 'title', label: 'STORY', bold: true },
-                    { key: 'description', label: 'DESCRIPTION' },
-                    { key: 'chapter_name', label: 'CHAPTER' },
-                    { key: 'order_index', label: 'ORDER' },
-                  ]}
-                  onEdit={(item) => { setEditing(item); modal.onOpen(); }}
-                  onDelete={handleDelete}
-                  onView={(item) => toast({ title: `Viewing ${item.title}`, status: 'info' })}
-                />
+                <Button mb={6} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => { setEditing(null); modal.onOpen(); }}>Add Story</Button>
+                {filteredChapters.map(chapter => {
+                  const chapterStories = filteredStories.filter(s => s.chapter_id === chapter.chapter_id);
+                  return (
+                    <Box key={chapter.chapter_id} mb={8} p={5} bg="#FFFDF8" borderRadius="14px" border="1px solid rgba(214,168,79,0.25)">
+                      <Flex justify="space-between" align="center" mb={4}>
+                        <Box>
+                          <Heading size="md" color="brand.navy">{chapter.title}</Heading>
+                          <Text color="brand.muted" fontSize="sm">Module: {chapter.module_name}</Text>
+                        </Box>
+                        <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
+                          {chapterStories.length} Stories
+                        </Badge>
+                      </Flex>
+                      {chapterStories.length > 0 ? (
+                        <DataTable
+                          items={chapterStories}
+                          columns={[
+                            { key: 'order_index', label: 'ORDER' },
+                            { key: 'title', label: 'STORY', bold: true },
+                            { key: 'principle_ids', label: 'PRINCIPLES', render: (val) => <PrincipleBadges principleIds={val} allPrinciples={data?.principles || []} /> },
+                            { key: 'status', label: 'STATUS', badge: true },
+                          ]}
+                          onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                          onDelete={handleDelete}
+                        />
+                      ) : (
+                        <Text color="brand.muted" fontStyle="italic" py={4}>No stories added to this chapter yet.</Text>
+                      )}
+                    </Box>
+                  );
+                })}
               </TabPanel>
             </TabPanels>
           </Tabs>

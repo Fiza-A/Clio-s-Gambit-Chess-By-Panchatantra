@@ -143,11 +143,13 @@ export const curriculum = async (_req, res) => {
       ORDER BY c.order_index ASC
     `);
     const storiesRes = await query(`
-      SELECT s.*, c.chapter_name 
+      SELECT s.*, c.chapter_name, m.module_name
       FROM "story" s
       LEFT JOIN "chapter" c ON s.chapter_id = c.chapter_id
+      LEFT JOIN "module" m ON s.module_id = m.module_id
       ORDER BY s.order_index ASC
     `);
+    const principlesRes = await query('SELECT * FROM "principles" ORDER BY name ASC');
     
     res.json({
       modules: modulesRes.rows.map(m => ({
@@ -170,11 +172,17 @@ export const curriculum = async (_req, res) => {
         story_id: s.story_id,
         chapter_id: s.chapter_id,
         chapter_name: s.chapter_name,
+        module_id: s.module_id,
+        module_name: s.module_name,
         title: s.title,
         description: s.description,
         content: s.content,
-        order_index: s.order_index
-      }))
+        order_index: s.order_index,
+        status: s.status || 'published',
+        tags: parseIds(s.tags),
+        principle_ids: parseIds(s.principle_ids)
+      })),
+      principles: principlesRes.rows
     });
   } catch (err) {
     console.error('[ADMIN API] Error in curriculum:', err);
@@ -210,6 +218,11 @@ export const modules = {
   },
   remove: async (req, res) => {
     try {
+      // Prevent deletion if module has chapters
+      const chaptersCount = await query('SELECT COUNT(*) FROM "chapter" WHERE module_id = $1', [req.params.id]);
+      if (parseInt(chaptersCount.rows[0].count) > 0) {
+        return res.status(400).json({ error: 'Cannot delete module that has chapters. Please delete or move chapters first.' });
+      }
       await query('DELETE FROM "module" WHERE module_id = $1', [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
@@ -227,6 +240,12 @@ export const chapters = {
         'INSERT INTO "chapter" (chapter_id, chapter_name, module_id, order_index, story_ids) VALUES ($1, $2, $3, $4, $5)',
         [id, title, module_id, order_index || 0, '[]']
       );
+      // Update module's chapter_ids
+      const modRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [module_id]);
+      const chapterIds = parseIds(modRes.rows[0]?.chapter_ids);
+      chapterIds.push(id);
+      await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(chapterIds), module_id]);
+      
       res.status(201).json({ ok: true, id });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -235,10 +254,28 @@ export const chapters = {
   update: async (req, res) => {
     try {
       const { title, module_id, order_index } = req.body;
+      // Get old module_id to update if changed
+      const oldChapter = await query('SELECT module_id FROM "chapter" WHERE chapter_id = $1', [req.params.id]);
+      const oldModuleId = oldChapter.rows[0]?.module_id;
+
       await query(
         'UPDATE "chapter" SET chapter_name = $1, module_id = $2, order_index = $3 WHERE chapter_id = $4',
         [title, module_id, order_index, req.params.id]
       );
+
+      if (oldModuleId && oldModuleId !== module_id) {
+        // Remove from old module
+        const oldModRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [oldModuleId]);
+        const oldIds = parseIds(oldModRes.rows[0]?.chapter_ids).filter(id => id !== req.params.id);
+        await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(oldIds), oldModuleId]);
+        
+        // Add to new module
+        const newModRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [module_id]);
+        const newIds = parseIds(newModRes.rows[0]?.chapter_ids);
+        if (!newIds.includes(req.params.id)) newIds.push(req.params.id);
+        await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(newIds), module_id]);
+      }
+
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -246,6 +283,21 @@ export const chapters = {
   },
   remove: async (req, res) => {
     try {
+      // Prevent deletion if chapter has stories
+      const storiesCount = await query('SELECT COUNT(*) FROM "story" WHERE chapter_id = $1', [req.params.id]);
+      if (parseInt(storiesCount.rows[0].count) > 0) {
+        return res.status(400).json({ error: 'Cannot delete chapter that has stories. Please delete or move stories first.' });
+      }
+
+      // Remove from module chapter_ids
+      const chapter = await query('SELECT module_id FROM "chapter" WHERE chapter_id = $1', [req.params.id]);
+      const moduleId = chapter.rows[0]?.module_id;
+      if (moduleId) {
+        const modRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [moduleId]);
+        const ids = parseIds(modRes.rows[0]?.chapter_ids).filter(id => id !== req.params.id);
+        await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(ids), moduleId]);
+      }
+
       await query('DELETE FROM "chapter" WHERE chapter_id = $1', [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
@@ -265,12 +317,29 @@ export const stories = {
   },
   create: async (req, res) => {
     try {
-      const { title, description, content, chapter_id, order_index } = req.body;
+      const { title, description, content, chapter_id, module_id, order_index, status, tags, principle_ids } = req.body;
       const id = `st-${Date.now()}`;
+      
+      // If module_id not provided, get it from chapter
+      let finalModuleId = module_id;
+      if (!finalModuleId && chapter_id) {
+        const chapterRes = await query('SELECT module_id FROM "chapter" WHERE chapter_id = $1', [chapter_id]);
+        finalModuleId = chapterRes.rows[0]?.module_id;
+      }
+
       await query(
-        'INSERT INTO "story" (story_id, title, description, content, chapter_id, order_index) VALUES ($1, $2, $3, $4, $5, $6)',
-        [id, title, description, content, chapter_id, order_index || 0]
+        'INSERT INTO "story" (story_id, title, description, content, chapter_id, module_id, order_index, status, tags, principle_ids) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+        [id, title, description, content, chapter_id, finalModuleId, order_index || 0, status || 'published', JSON.stringify(tags || []), JSON.stringify(principle_ids || [])]
       );
+
+      // Update chapter's story_ids
+      if (chapter_id) {
+        const chapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [chapter_id]);
+        const storyIds = parseIds(chapRes.rows[0]?.story_ids);
+        storyIds.push(id);
+        await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(storyIds), chapter_id]);
+      }
+
       res.status(201).json({ ok: true, id });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -278,11 +347,32 @@ export const stories = {
   },
   update: async (req, res) => {
     try {
-      const { title, description, content, chapter_id, order_index } = req.body;
+      const { title, description, content, chapter_id, module_id, order_index, status, tags, principle_ids } = req.body;
+      
+      // Get old chapter_id to update if changed
+      const oldStory = await query('SELECT chapter_id FROM "story" WHERE story_id = $1', [req.params.id]);
+      const oldChapterId = oldStory.rows[0]?.chapter_id;
+
       await query(
-        'UPDATE "story" SET title = $1, description = $2, content = $3, chapter_id = $4, order_index = $5 WHERE story_id = $6',
-        [title, description, content, chapter_id, order_index, req.params.id]
+        'UPDATE "story" SET title = $1, description = $2, content = $3, chapter_id = $4, module_id = $5, order_index = $6, status = $7, tags = $8, principle_ids = $9 WHERE story_id = $10',
+        [title, description, content, chapter_id, module_id, order_index, status, JSON.stringify(tags || []), JSON.stringify(principle_ids || []), req.params.id]
       );
+
+      if (oldChapterId && oldChapterId !== chapter_id) {
+        // Remove from old chapter
+        const oldChapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [oldChapterId]);
+        const oldIds = parseIds(oldChapRes.rows[0]?.story_ids).filter(id => id !== req.params.id);
+        await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(oldIds), oldChapterId]);
+        
+        // Add to new chapter
+        if (chapter_id) {
+          const newChapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [chapter_id]);
+          const newIds = parseIds(newChapRes.rows[0]?.story_ids);
+          if (!newIds.includes(req.params.id)) newIds.push(req.params.id);
+          await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(newIds), chapter_id]);
+        }
+      }
+
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -290,6 +380,15 @@ export const stories = {
   },
   remove: async (req, res) => {
     try {
+      // Remove from chapter story_ids
+      const story = await query('SELECT chapter_id FROM "story" WHERE story_id = $1', [req.params.id]);
+      const chapterId = story.rows[0]?.chapter_id;
+      if (chapterId) {
+        const chapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [chapterId]);
+        const ids = parseIds(chapRes.rows[0]?.story_ids).filter(id => id !== req.params.id);
+        await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(ids), chapterId]);
+      }
+
       await query('DELETE FROM "story" WHERE story_id = $1', [req.params.id]);
       res.json({ ok: true });
     } catch (err) {

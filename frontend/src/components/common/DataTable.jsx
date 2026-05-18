@@ -13,7 +13,9 @@ export default function DataTable({ items = [], columns, onView, onEdit, onDelet
             <Tr key={item.id || item.title || item.name}>
               {columns.map((col) => (
                 <Td key={col.key} fontWeight={col.bold ? "bold" : "normal"}>
-                  {col.status || col.badge ? (
+                  {col.render ? (
+                    col.render(item[col.key], item)
+                  ) : col.status || col.badge ? (
                     <Badge 
                       colorScheme={String(item[col.key]).toLowerCase().includes('active') ? 'green' : 'yellow'}
                       textTransform="uppercase"

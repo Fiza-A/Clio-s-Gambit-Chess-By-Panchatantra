@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Button, FormControl, FormLabel, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select, Textarea, VStack } from '@chakra-ui/react';
+import { Button, Checkbox, CheckboxGroup, FormControl, FormLabel, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select, SimpleGrid, Textarea, VStack } from '@chakra-ui/react';
 
 export default function FormModal({ isOpen, onClose, title, fields = [], initialValues = {}, onSubmit }) {
   const [values, setValues] = useState(initialValues);
   useEffect(() => setValues(initialValues || {}), [initialValues, isOpen]);
 
+  const currentFields = typeof fields === 'function' ? fields(values) : fields;
+
   const submit = () => {
-    const missing = fields.find((field) => field.required && !values[field.name]);
+    const missing = currentFields.find((field) => field.required && !values[field.name]);
     if (missing) return;
     onSubmit(values);
   };
@@ -19,13 +21,34 @@ export default function FormModal({ isOpen, onClose, title, fields = [], initial
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4}>
-            {fields.map((field) => (
+            {currentFields.map((field) => (
               <FormControl key={field.name} isRequired={field.required}>
                 <FormLabel>{field.label}</FormLabel>
                 {field.type === 'textarea' ? (
                   <Textarea value={values[field.name] || ''} onChange={(event) => setValues({ ...values, [field.name]: event.target.value })} />
+                ) : field.type === 'multiselect' ? (
+                  <CheckboxGroup 
+                    value={values[field.name] || []} 
+                    onChange={(val) => setValues({ ...values, [field.name]: val })}
+                  >
+                    <SimpleGrid columns={2} spacing={2} w="100%">
+                      {(field.options || []).map((option) => {
+                        const label = typeof option === 'object' ? option.label : option;
+                        const value = typeof option === 'object' ? option.value : option;
+                        return <Checkbox key={value} value={value}>{label}</Checkbox>;
+                      })}
+                    </SimpleGrid>
+                  </CheckboxGroup>
                 ) : field.options ? (
-                  <Select value={values[field.name] || ''} onChange={(event) => setValues({ ...values, [field.name]: event.target.value })}>
+                  <Select 
+                    value={values[field.name] || ''} 
+                    onChange={(event) => {
+                      const nextValues = { ...values, [field.name]: event.target.value };
+                      // Reset dependent fields if needed
+                      if (field.name === 'module_id') nextValues.chapter_id = '';
+                      setValues(nextValues);
+                    }}
+                  >
                     <option value="">Choose</option>
                     {field.options.map((option) => {
                       const label = typeof option === 'object' ? option.label : option;
