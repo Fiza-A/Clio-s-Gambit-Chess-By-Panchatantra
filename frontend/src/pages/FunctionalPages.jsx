@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Badge, Box, Button, Flex, FormControl, FormLabel, Grid, Heading, HStack, Input, Progress, Select, SimpleGrid, Spinner, Switch, Tab, TabList, TabPanel, TabPanels, Tabs, Text, Textarea, useDisclosure, useToast, VStack } from '@chakra-ui/react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Badge, Box, Button, Flex, FormControl, FormLabel, Grid, Heading, HStack, Input, Progress, Select, SimpleGrid, Spinner, Stat, StatHelpText, StatLabel, StatNumber, Switch, Tab, TabList, TabPanel, TabPanels, Table, Tbody, Td, Th, Thead, Tr, Tabs, Text, Textarea, useDisclosure, useToast, VStack, Divider, Link } from '@chakra-ui/react';
+import { ExternalLink } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout.jsx';
 import DashboardCard from '../components/common/DashboardCard.jsx';
 import DataTable from '../components/common/DataTable.jsx';
@@ -15,6 +16,7 @@ import PuzzlePlayer from '../components/chess/PuzzlePlayer.jsx';
 import { studentApi } from '../api/studentApi.js';
 import { coachApi } from '../api/coachApi.js';
 import { adminApi } from '../api/adminApi.js';
+import { chessComApi } from '../api/chessComApi.js';
 import { downloadTextFile } from '../utils/download.js';
 import { getValue, titleCase } from '../utils/formatters.js';
 
@@ -24,10 +26,13 @@ function useLoad(loader, deps = []) {
   const reload = async () => {
     try {
       setError('');
+      console.log(`[useLoad] Loading data for ${loader.toString().slice(0, 100)}...`);
       const next = await loader();
+      console.log('[useLoad] Data received:', next);
       setData(next);
       return next;
     } catch (err) {
+      console.error('[useLoad] Error:', err);
       setError(err.message);
       return null;
     }
@@ -266,10 +271,8 @@ export function StudentPrincipleDetail() {
   const { data, reload } = useLoad(() => studentApi.detail('principles', principleId), [principleId]);
   if (!data) return <PageShell role="student" title="Principle"><LoadingState /></PageShell>;
   return (
-    <PageShell role="student" title={data.name} subtitle={data.category}>
+    <PageShell role="student" title={data.name}>
       <DashboardCard>
-        <Text>{data.explanation}</Text>
-        <VStack mt={4} align="stretch">{data.examples?.map((example) => <Text key={example}>• {example}</Text>)}</VStack>
         <HStack mt={5}><Button onClick={async () => { await studentApi.learnPrinciple(data.id, { learned: true }); toast({ title: 'Marked as learned', status: 'success' }); reload(); }}>Mark as Learned</Button><Button>Practice Principle</Button><Button>Add to Revision</Button></HStack>
       </DashboardCard>
     </PageShell>
@@ -504,14 +507,15 @@ export function AdminUserDetail() {
   return <PageShell role="admin" title={data.name}><DashboardCard><Text>Email: {data.email}</Text><Text>Role: {data.role}</Text><Text>Status: {data.status}</Text><HStack mt={5}><Button onClick={() => toast({ title: 'Password reset sent', status: 'success' })}>Reset Password</Button><Button onClick={() => toast({ title: 'Role assigned', status: 'success' })}>Assign Role</Button><Button colorScheme="red" onClick={() => toast({ title: 'User status changed', status: 'warning' })}>Suspend/Activate</Button></HStack></DashboardCard></PageShell>;
 }
 
-export function AdminCrudPage({ title, resource, fields, onView }) {
+export function AdminCrudPage({ title, resource, fields, onView, columns: customColumns }) {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload } = useLoad(() => adminApi.list(resource), [resource]);
   const [editing, setEditing] = useState(null);
-  const columns = [{ key: 'title', label: 'Title' }, { key: 'name', label: 'Name' }, { key: 'difficulty', label: 'Difficulty' }, { key: 'role', label: 'Role' }, { key: 'status', label: 'Status', badge: true }].filter((col) => (data || []).some((item) => item[col.key] !== undefined));
+  const autoColumns = [{ key: 'title', label: 'Title' }, { key: 'name', label: 'Name' }, { key: 'difficulty', label: 'Difficulty' }, { key: 'role', label: 'Role' }, { key: 'status', label: 'Status', badge: true }].filter((col) => (data || []).some((item) => item[col.key] !== undefined));
+  const columns = customColumns || (autoColumns.length ? autoColumns : [{ key: 'id', label: 'ID' }]);
   const save = async (values) => { editing ? await adminApi.update(resource, editing.id, values) : await adminApi.create(resource, values); toast({ title: `${title} saved`, status: 'success' }); setEditing(null); modal.onClose(); reload(); };
-  return <PageShell role="admin" title={title}><Button mb={4} onClick={() => { setEditing(null); modal.onOpen(); }}>Add {title.slice(0, -1)}</Button>{!data ? <LoadingState /> : <DataTable items={data} columns={columns.length ? columns : [{ key: 'id', label: 'ID' }]} onView={onView} onEdit={(item) => { setEditing(item); modal.onOpen(); }} onDelete={async (item) => { await adminApi.remove(resource, item.id); toast({ title: 'Deleted', status: 'info' }); reload(); }} />}<FormModal isOpen={modal.isOpen} onClose={modal.onClose} title={`${editing ? 'Edit' : 'Add'} ${title}`} fields={fields} initialValues={editing || {}} onSubmit={save} /></PageShell>;
+  return <PageShell role="admin" title={title}><Button mb={4} onClick={() => { setEditing(null); modal.onOpen(); }}>Add {title.slice(0, -1)}</Button>{!data ? <LoadingState /> : <DataTable items={data} columns={columns} onView={onView} onEdit={(item) => { setEditing(item); modal.onOpen(); }} onDelete={async (item) => { await adminApi.remove(resource, item.id); toast({ title: 'Deleted', status: 'info' }); reload(); }} />}<FormModal isOpen={modal.isOpen} onClose={modal.onClose} title={`${editing ? 'Edit' : 'Add'} ${title}`} fields={fields} initialValues={editing || {}} onSubmit={save} /></PageShell>;
 }
 
 const PrincipleBadges = ({ principleIds, allPrinciples }) => {
@@ -532,11 +536,678 @@ const PrincipleBadges = ({ principleIds, allPrinciples }) => {
   );
 };
 
+const StoryStatusSelect = ({ storyId, currentStatus, onUpdate }) => {
+  const [loading, setLoading] = useState(false);
+  const toast = useToast();
+
+  const handleChange = async (e) => {
+    const newStatus = e.target.value;
+    setLoading(true);
+    try {
+      await adminApi.updateStoryStatus(storyId, newStatus);
+      onUpdate(storyId, newStatus);
+      toast({ title: 'Story status updated', status: 'success' });
+    } catch (err) {
+      toast({ title: 'Error updating status', description: err.response?.data?.error || err.message, status: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Select 
+      size="sm" 
+      w="130px" 
+      value={currentStatus} 
+      onChange={handleChange} 
+      disabled={loading}
+      bg={currentStatus === 'published' ? 'green.50' : 'orange.50'}
+      borderColor={currentStatus === 'published' ? 'green.200' : 'orange.200'}
+      fontWeight="bold"
+    >
+      <option value="published">Published</option>
+      <option value="on_hold">On Hold</option>
+    </Select>
+  );
+};
+
+const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => {
+  const modal = useDisclosure();
+  const [editingMapping, setEditingMapping] = useState(null);
+  const toast = useToast();
+
+  const handleEdit = (mapping) => {
+    setEditingMapping(mapping);
+    modal.onOpen();
+  };
+
+  const handleSave = async (values) => {
+    try {
+      await adminApi.updateStoryMapping(editingMapping.id, values);
+      onUpdateMapping(editingMapping.id, values);
+      toast({ title: 'Message updated', status: 'success' });
+      modal.onClose();
+    } catch (err) {
+      toast({ title: 'Error saving', description: err.response?.data?.error || err.message, status: 'error' });
+    }
+  };
+
+  if (!mappings || mappings.length === 0) {
+    return <Text fontSize="sm" color="brand.muted" fontStyle="italic" py={2} pl={6}>No story messages mapped to principles.</Text>;
+  }
+
+  return (
+    <Box mt={3} pl={6} overflowX="auto">
+      <Table variant="simple" size="sm" bg="white" borderRadius="12px" border="1px solid" borderColor="gray.100" overflow="hidden">
+        <Thead bg="gray.50">
+          <Tr>
+            <Th py={3} fontSize="11px" fontWeight="700" color="brand.navy" letterSpacing="0.05em">MESSAGE / STORY TEXT</Th>
+            <Th py={3} fontSize="11px" fontWeight="700" color="brand.navy" letterSpacing="0.05em">PRINCIPLE</Th>
+            <Th py={3} fontSize="11px" fontWeight="700" color="brand.navy" letterSpacing="0.05em">ACTIONS</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {mappings.map(m => {
+            const principleName = 
+              m.principleName || 
+              m.principleLabel || 
+              principles.find( 
+                p => String(p.id).trim().toLowerCase() === String(m.principleId).trim().toLowerCase() 
+              )?.name || 
+              `Missing principle name (${m.principleId || 'no principleId'})`;
+            return (
+              <Tr key={m.id} _hover={{ bg: "gray.50" }}>
+                <Td py={4}>
+                  <Text fontSize="13px" color="gray.700" lineHeight="1.6" whiteSpace="normal">
+                    {m.storyText}
+                  </Text>
+                </Td>
+                <Td py={4}>
+                  <Text 
+                    fontSize="13px" 
+                    fontWeight="600" 
+                    color="brand.navy" 
+                    lineHeight="1.5" 
+                    whiteSpace="normal"
+                    title={m.principleId}
+                  >
+                    {principleName}
+                  </Text>
+                </Td>
+                <Td py={4} whiteSpace="nowrap">
+                  <Button 
+                    size="xs" 
+                    variant="outline" 
+                    borderColor="brand.goldDark" 
+                    color="brand.goldDark" 
+                    _hover={{ bg: "brand.goldDark", color: "white" }}
+                    onClick={() => handleEdit(m)}
+                  >
+                    Edit
+                  </Button>
+                </Td>
+              </Tr>
+            );
+          })}
+        </Tbody>
+      </Table>
+      <FormModal
+        isOpen={modal.isOpen}
+        onClose={modal.onClose}
+        title="Edit Story Message"
+        fields={[
+          { name: 'storyText', label: 'Message Text', type: 'textarea', required: true }
+        ]}
+        initialValues={{ storyText: editingMapping?.storyText }}
+        onSubmit={handleSave}
+      />
+    </Box>
+  );
+};
+
+const NestedStoriesView = ({ search, principles = [] }) => {
+  const { data, reload, loading, error } = useLoad(() => adminApi.nestedCurriculumStories(), []);
+  
+  const onUpdateMapping = () => {
+    reload();
+  };
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+  if (!data?.modules?.length) return <EmptyState title="No curriculum stories found." />;
+
+  const filteredModules = data.modules.filter(m => {
+    const searchLower = search.toLowerCase();
+    const moduleMatches = m.name.toLowerCase().includes(searchLower);
+    
+    const chaptersWithMatches = m.chapters.filter(c => {
+      const chapterMatches = c.name.toLowerCase().includes(searchLower);
+      const storiesWithMatches = c.stories.filter(s => {
+        const storyMatches = s.title.toLowerCase().includes(searchLower) || (s.description || '').toLowerCase().includes(searchLower) || s.status.includes(searchLower);
+        const mappingsWithMatches = s.mappings.filter(sm => 
+          (sm.storyText || '').toLowerCase().includes(searchLower) || 
+          (sm.principleName || '').toLowerCase().includes(searchLower) || 
+          (sm.principleLabel || '').toLowerCase().includes(searchLower) ||
+          (sm.principleId || '').toLowerCase().includes(searchLower) ||
+          (principles.find( 
+            p => String(p.id).trim().toLowerCase() === String(sm.principleId).trim().toLowerCase() 
+          )?.name || '').toLowerCase().includes(searchLower)
+        );
+        return storyMatches || mappingsWithMatches.length > 0;
+      });
+      return chapterMatches || storiesWithMatches.length > 0;
+    });
+    
+    return moduleMatches || chaptersWithMatches.length > 0;
+  });
+
+  if (filteredModules.length === 0 && search) {
+    return <EmptyState title="No curriculum stories found for this search." />;
+  }
+
+  return (
+    <VStack align="stretch" spacing={8}>
+      {filteredModules.map(module => (
+        <Box key={module.id} p={6} bg="#FFFDF8" borderRadius="18px" border="1px solid rgba(214,168,79,0.25)" boxShadow="sm">
+          <Flex justify="space-between" align="start" mb={6}>
+            <Box>
+              <Heading size="lg" color="brand.navy" fontFamily="serif">{module.name}</Heading>
+            </Box>
+            <HStack>
+              <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">{module.chapters.length} Chapters</Badge>
+              <Badge bg="brand.goldDark" color="white" px={3} py={1} borderRadius="full">
+                {module.chapters.reduce((acc, c) => acc + c.stories.length, 0)} Stories
+              </Badge>
+            </HStack>
+          </Flex>
+
+          <VStack align="stretch" spacing={6}>
+            {module.chapters.length === 0 ? (
+              <Text color="brand.muted" fontStyle="italic" pl={4}>No chapters in this module.</Text>
+            ) : (
+              module.chapters.map(chapter => (
+                <Box key={chapter.id} p={5} bg="rgba(251, 241, 213, 0.2)" borderRadius="14px" borderLeft="4px solid" borderLeftColor="brand.gold">
+                  <Flex justify="space-between" align="center" mb={4}>
+                    <Heading size="md" color="brand.navy" fontFamily="serif">{chapter.name}</Heading>
+                    <Badge variant="outline" colorScheme="brand" borderRadius="full" px={3}>{chapter.stories.length} Stories</Badge>
+                  </Flex>
+
+                  <VStack align="stretch" spacing={4}>
+                    {chapter.stories.length === 0 ? (
+                      <Text color="brand.muted" fontStyle="italic" fontSize="sm" pl={6}>No stories in this chapter.</Text>
+                    ) : (
+                      chapter.stories.map(story => (
+                        <Box key={story.id} p={4} bg="white" borderRadius="10px" border="1px solid" borderColor="gray.100" boxShadow="xs">
+                          <Flex justify="space-between" align="start">
+                            <Box flex="1">
+                              <HStack mb={1}>
+                                <Heading size="sm" color="brand.navy">{story.title}</Heading>
+                                <Badge colorScheme={story.status === 'published' ? 'green' : 'orange'} fontSize="2xs" borderRadius="full" px={2}>
+                                  {story.status.replace('_', ' ').toUpperCase()}
+                                </Badge>
+                              </HStack>
+                              <Text fontSize="xs" color="brand.muted" noOfLines={2}>{story.description}</Text>
+                            </Box>
+                            <StoryStatusSelect 
+                              storyId={story.id} 
+                              currentStatus={story.status} 
+                              onUpdate={() => reload()} 
+                            />
+                          </Flex>
+                          
+                          <MappingMessageTable 
+                            mappings={story.mappings} 
+                            onUpdateMapping={onUpdateMapping} 
+                            principles={principles}
+                          />
+                        </Box>
+                      ))
+                    )}
+                  </VStack>
+                </Box>
+              ))
+            )}
+          </VStack>
+        </Box>
+      ))}
+    </VStack>
+  );
+};
+
+const EMPTY_FIELDS = [];
+const EMPTY_OBJECT = {};
+
+export function AdminGamesDetails() {
+  const toast = useToast();
+  const { data: players, reload, loading } = useLoad(() => adminApi.players(), []);
+  const [syncing, setSyncing] = useState(false);
+  const [syncingActivity, setSyncingActivity] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  
+  // Edit Modal State
+  const editModal = useDisclosure();
+  const [editingPlayer, setEditingPlayer] = useState(null);
+
+  // History Modal State
+  const historyModal = useDisclosure();
+  const [historyData, setHistoryData] = useState([]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const result = await adminApi.syncPlayers();
+      
+      if (result.errorsCount > 0) {
+        toast({ 
+          title: 'Profile Sync Complete with Errors', 
+          description: `Updated: ${result.updated}, Errors: ${result.errorsCount}`,
+          status: 'warning',
+        });
+      } else {
+        toast({ 
+          title: 'Profile Sync Successful', 
+          description: `Updated: ${result.updated}`,
+          status: 'success',
+        });
+      }
+      reload();
+    } catch (err) {
+      toast({ title: 'Sync Failed', description: err.message, status: 'error' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleSyncActivity = async () => {
+    setSyncingActivity(true);
+    try {
+      const result = await chessComApi.autoCompleteActivity();
+      toast({ 
+        title: 'Activity Sync Complete', 
+        description: `Updated: ${result.updatedCount}, Errors: ${result.errorsCount}`,
+        status: result.errorsCount > 0 ? 'warning' : 'success',
+      });
+      reload();
+    } catch (err) {
+      toast({ title: 'Activity Sync Failed', description: err.message, status: 'error' });
+    } finally {
+      setSyncingActivity(false);
+    }
+  };
+
+  const openPlayerDetails = async (player) => {
+    try {
+      const activity = await chessComApi.getPlayerActivity(player.Chess_com_ID);
+      setSelectedPlayer({
+        ...activity,
+        playerData: player // Pass full row data for detailed stats
+      });
+      onOpen();
+    } catch (err) {
+      toast({ title: 'Failed to load activity', description: err.message, status: 'error' });
+    }
+  };
+
+  const handleEditPlayer = (player) => {
+    setEditingPlayer(player);
+    editModal.onOpen();
+  };
+
+  const savePlayerEdit = async (values) => {
+    try {
+      await adminApi.updatePlayer(editingPlayer.Chess_com_ID, values);
+      toast({ title: 'Player updated', status: 'success' });
+      editModal.onClose();
+      reload();
+    } catch (err) {
+      toast({ title: 'Failed to update player', description: err.message, status: 'error' });
+    }
+  };
+
+  const handleDeletePlayer = async (player) => {
+    if (!window.confirm(`Are you sure you want to delete player ${player.Player_Name}?`)) return;
+    try {
+      await adminApi.deletePlayer(player.Chess_com_ID);
+      toast({ title: 'Player deleted', status: 'success' });
+      reload();
+    } catch (err) {
+      toast({ title: 'Failed to delete player', description: err.message, status: 'error' });
+    }
+  };
+
+  const handleTogglePause = async (player) => {
+    try {
+      const res = await adminApi.togglePlayerPause(player.Chess_com_ID);
+      toast({ 
+        title: res.is_paused ? 'Player paused' : 'Player resumed', 
+        status: 'info' 
+      });
+      reload();
+    } catch (err) {
+      toast({ title: 'Failed to toggle pause', description: err.message, status: 'error' });
+    }
+  };
+
+  const handleViewHistory = async (player) => {
+    try {
+      const activity = await chessComApi.getPlayerActivity(player.Chess_com_ID);
+      setHistoryData(activity.activityRows || []);
+      setSelectedPlayer(player);
+      historyModal.onOpen();
+    } catch (err) {
+      toast({ title: 'Failed to load history', description: err.message, status: 'error' });
+    }
+  };
+
+  const filteredPlayers = (players || []).filter(p => 
+    p.Player_Name?.toLowerCase().includes(search.toLowerCase()) || 
+    p.Chess_com_ID?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <PageShell role="admin" title="Games Details">
+      <VStack align="stretch" spacing={6}>
+        <Flex justify="space-between" align="center" bg="white" p={4} borderRadius="16px" border="1px solid" borderColor="rgba(214,168,79,0.15)" shadow="sm">
+          <Box flex="1" maxW="400px">
+            <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
+          </Box>
+          <HStack spacing={3}>
+            <Button 
+              leftIcon={<Spinner size="xs" display={syncingActivity ? 'block' : 'none'} />}
+              onClick={handleSyncActivity} 
+              isLoading={syncingActivity}
+              loadingText="Syncing..."
+              variant="outline"
+              borderColor="brand.navy"
+              color="brand.navy"
+              _hover={{ bg: 'brand.navy', color: 'white' }}
+              borderRadius="full"
+              px={6}
+            >
+              Sync Activity
+            </Button>
+            <Button 
+              leftIcon={<Spinner size="xs" display={syncing ? 'block' : 'none'} />}
+              onClick={handleSync} 
+              isLoading={syncing}
+              loadingText="Syncing..."
+              bg="brand.navy"
+              color="white"
+              _hover={{ bg: 'brand.goldDark' }}
+              borderRadius="full"
+              px={6}
+            >
+              Sync Profiles
+            </Button>
+          </HStack>
+        </Flex>
+
+        {loading ? (
+          <LoadingState />
+        ) : (
+          <DataTable
+            items={filteredPlayers}
+            onView={openPlayerDetails}
+            onEdit={handleEditPlayer}
+            onDelete={handleDeletePlayer}
+            extraActions={[
+              {
+                label: (p) => {
+                  const tracker = typeof p.activity_tracker === 'string' ? JSON.parse(p.activity_tracker) : p.activity_tracker;
+                  return tracker?.is_paused ? 'Resume' : 'Pause';
+                },
+                colorScheme: (p) => {
+                  const tracker = typeof p.activity_tracker === 'string' ? JSON.parse(p.activity_tracker) : p.activity_tracker;
+                  return tracker?.is_paused ? 'green' : 'orange';
+                },
+                onClick: handleTogglePause
+              },
+              {
+                label: 'History',
+                colorScheme: 'purple',
+                onClick: handleViewHistory
+              }
+            ]}
+            columns={[
+              { 
+                key: 'Chess_com_ID', 
+                label: 'CHESS.COM ID', 
+                bold: true,
+                render: (val, row) => {
+                  const tracker = typeof row.activity_tracker === 'string' ? JSON.parse(row.activity_tracker) : row.activity_tracker;
+                  return (
+                    <HStack>
+                      <Text fontWeight="bold" color="brand.navy">{val}</Text>
+                      {tracker?.is_paused && <Badge colorScheme="orange" fontSize="8px">PAUSED</Badge>}
+                    </HStack>
+                  );
+                }
+              },
+              { key: 'Player_Name', label: 'PLAYER NAME' },
+              { 
+                key: 'ratings', 
+                label: 'RATINGS (R/B/U)', 
+                render: (_, row) => (
+                  <HStack spacing={1}>
+                    <Badge bg="#EBF8FF" color="#2B6CB0" borderRadius="full" px={2} title="Rapid">{row.rapid_rating || '-'}</Badge>
+                    <Badge bg="#FFF5F5" color="#C53030" borderRadius="full" px={2} title="Blitz">{row.blitz_rating || '-'}</Badge>
+                    <Badge bg="#FAF5FF" color="#6B46C1" borderRadius="full" px={2} title="Bullet">{row.bullet_rating || '-'}</Badge>
+                  </HStack>
+                )
+              },
+              { 
+                key: 'best', 
+                label: 'BEST (R/B/U)', 
+                render: (_, row) => (
+                  <HStack spacing={1}>
+                    <Badge variant="outline" colorScheme="blue" borderRadius="full" px={2} fontSize="10px" title="Best Rapid">{row.rapid_best || '-'}</Badge>
+                    <Badge variant="outline" colorScheme="red" borderRadius="full" px={2} fontSize="10px" title="Best Blitz">{row.blitz_best || '-'}</Badge>
+                    <Badge variant="outline" colorScheme="purple" borderRadius="full" px={2} fontSize="10px" title="Best Bullet">{row.bullet_best || '-'}</Badge>
+                  </HStack>
+                )
+              },
+              { key: 'current_elo', label: 'MAX ELO', render: (val) => <Badge bg="rgba(214,168,79,0.15)" color="brand.goldDark" borderRadius="full" px={3} variant="solid">{val || '-'}</Badge> },
+              { key: 'Joining_Date', label: 'JOINED', render: (val) => val ? <Text fontSize="13px" color="gray.600">{new Date(val).toLocaleDateString()}</Text> : 'N/A' },
+              { 
+                key: 'chess_last_synced_at', 
+                label: 'SYNC STATUS', 
+                render: (val, row) => {
+                  const activity = row.activity_tracker || {};
+                  const dates = Object.keys(activity);
+                  const locked = dates.filter(d => activity[d]?.lock);
+                  const errors = dates.filter(d => activity[d]?.error);
+
+                  if (!val && dates.length === 0) return <Badge variant="subtle" colorScheme="gray" borderRadius="full" px={3}>NOT SYNCED</Badge>;
+
+                  return (
+                    <VStack align="start" spacing={1}>
+                      <HStack spacing={1}>
+                        {locked.length > 0 && <Badge bg="#C6F6D5" color="#22543D" borderRadius="full" fontSize="10px" px={2}>{locked.length}d</Badge>}
+                        {errors.length > 0 && <Badge bg="#FED7D7" color="#822727" borderRadius="full" fontSize="10px" px={2} title={activity[errors[0]].error}>ERR</Badge>}
+                        {dates.length > (locked.length + errors.length) && (
+                          <Badge bg="#FEEBC8" color="#744210" borderRadius="full" fontSize="10px" px={2}>+{dates.length - locked.length - errors.length}p</Badge>
+                        )}
+                      </HStack>
+                      {val && (
+                        <Text fontSize="10px" fontWeight="600" color="gray.400" whiteSpace="nowrap">
+                          {new Date(val).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                      )}
+                    </VStack>
+                  );
+                } 
+              }
+            ]}
+          />
+        )}
+      </VStack>
+
+      {/* Edit Player Modal */}
+      <FormModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.onClose}
+        title="Edit Player Profile"
+        fields={[
+          { name: 'Player_Name', label: 'Player Name', required: true },
+          { name: 'Chess_com_ID', label: 'Chess.com ID', disabled: true }
+        ]}
+        initialValues={editingPlayer || {}}
+        onSubmit={savePlayerEdit}
+      />
+
+      {/* Sync History Modal */}
+      <FormModal
+        isOpen={historyModal.isOpen}
+        onClose={historyModal.onClose}
+        title={`Sync History: ${selectedPlayer?.Player_Name || ''}`}
+        fields={[]}
+        onSubmit={historyModal.onClose}
+      >
+        <Box maxH="400px" overflowY="auto">
+          {historyData.length === 0 ? (
+            <Text py={10} textAlign="center" color="gray.500">No history found for this player.</Text>
+          ) : (
+            <Table size="sm" variant="simple">
+              <Thead bg="gray.50">
+                <Tr>
+                  <Th>Date</Th>
+                  <Th>Games</Th>
+                  <Th>Ratings (B/R)</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {historyData.map((row, i) => {
+                  const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+                  return (
+                    <Tr key={i}>
+                      <Td fontSize="xs">{new Date(row.date).toLocaleDateString()}</Td>
+                      <Td fontSize="xs">{data?.total_games || 0}</Td>
+                      <Td fontSize="xs">
+                        {data?.types?.Blitz?.last_rating || '-'} / {data?.types?.Rapid?.last_rating || '-'}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          )}
+        </Box>
+      </FormModal>
+
+      {/* Player Activity Modal (Existing) */}
+      <FormModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={`Player Details: ${selectedPlayer?.playerName || ''} (${selectedPlayer?.chessComId || ''})`}
+        fields={EMPTY_FIELDS}
+        onSubmit={onClose}
+      >
+        <VStack align="stretch" spacing={6}>
+          {/* Detailed Stats Grid */}
+          <Box p={4} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
+            <Heading size="xs" mb={4} textTransform="uppercase" color="brand.navy">Chess.com Stats Summary</Heading>
+            <SimpleGrid columns={3} spacing={4}>
+              <Stat size="sm">
+                <StatLabel fontSize="xs">Rapid</StatLabel>
+                <StatNumber fontSize="md">{selectedPlayer?.playerData?.rapid_rating || '-'}</StatNumber>
+                <StatHelpText fontSize="10px">Best: {selectedPlayer?.playerData?.rapid_best || '-'}</StatHelpText>
+              </Stat>
+              <Stat size="sm">
+                <StatLabel fontSize="xs">Blitz</StatLabel>
+                <StatNumber fontSize="md">{selectedPlayer?.playerData?.blitz_rating || '-'}</StatNumber>
+                <StatHelpText fontSize="10px">Best: {selectedPlayer?.playerData?.blitz_best || '-'}</StatHelpText>
+              </Stat>
+              <Stat size="sm">
+                <StatLabel fontSize="xs">Bullet</StatLabel>
+                <StatNumber fontSize="md">{selectedPlayer?.playerData?.bullet_rating || '-'}</StatNumber>
+                <StatHelpText fontSize="10px">Best: {selectedPlayer?.playerData?.bullet_best || '-'}</StatHelpText>
+              </Stat>
+              <Stat size="sm">
+                <StatLabel fontSize="xs">Tactics</StatLabel>
+                <StatNumber fontSize="md">{selectedPlayer?.playerData?.tactics_highest || '-'}</StatNumber>
+              </Stat>
+              <Stat size="sm">
+                <StatLabel fontSize="xs">Puzzle Rush</StatLabel>
+                <StatNumber fontSize="md">{selectedPlayer?.playerData?.puzzle_rush_best || '-'}</StatNumber>
+              </Stat>
+              <Stat size="sm">
+                <StatLabel fontSize="xs">FIDE</StatLabel>
+                <StatNumber fontSize="md">{selectedPlayer?.playerData?.fide_rating || '-'}</StatNumber>
+              </Stat>
+            </SimpleGrid>
+            
+            <Divider my={4} />
+            
+            <VStack align="stretch" spacing={2}>
+              <Flex justify="space-between" fontSize="xs">
+                <Text color="gray.500">Chess.com Profile:</Text>
+                <Link color="blue.500" href={selectedPlayer?.playerData?.chess_profile_url} isExternal>
+                  View Profile <Box as={ExternalLink} display="inline" mx="2px" size="14px" />
+                </Link>
+              </Flex>
+              <Flex justify="space-between" fontSize="xs">
+                <Text color="gray.500">Country:</Text>
+                <Text fontWeight="medium">{selectedPlayer?.playerData?.chess_country_url?.split('/').pop() || '-'}</Text>
+              </Flex>
+              <Flex justify="space-between" fontSize="xs">
+                <Text color="gray.500">Last Synced:</Text>
+                <Text fontWeight="medium">
+                  {selectedPlayer?.playerData?.chess_last_synced_at 
+                    ? new Date(selectedPlayer.playerData.chess_last_synced_at).toLocaleString() 
+                    : 'Never'}
+                </Text>
+              </Flex>
+            </VStack>
+          </Box>
+
+          <Box>
+            <Heading size="xs" mb={3} textTransform="uppercase" color="brand.navy">Recent Activity Records</Heading>
+            {selectedPlayer?.activityRows?.length === 0 ? (
+              <EmptyState title="No activity data found" />
+            ) : (
+              <Box maxH="300px" overflowY="auto" borderRadius="md" border="1px solid" borderColor="gray.100">
+                <Table size="sm" variant="simple">
+                  <Thead bg="gray.100" position="sticky" top={0} zIndex={1}>
+                    <Tr>
+                      <Th fontSize="10px">Date</Th>
+                      <Th fontSize="10px">Games</Th>
+                      <Th fontSize="10px">Blitz</Th>
+                      <Th fontSize="10px">Rapid</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {selectedPlayer?.activityRows?.map((row, idx) => (
+                      <Tr key={idx}>
+                        <Td fontSize="xs">{row.date}</Td>
+                        <Td fontSize="xs">{row.total_games}</Td>
+                        <Td fontSize="xs">{row.blitz_rating?.length ? row.blitz_rating[row.blitz_rating.length - 1] : '-'}</Td>
+                        <Td fontSize="xs">{row.rapid_rating?.length ? row.rapid_rating[row.rapid_rating.length - 1] : '-'}</Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </Box>
+            )}
+          </Box>
+        </VStack>
+      </FormModal>
+    </PageShell>
+  );
+}
+
 export function AdminCurriculum() {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload, loading } = useLoad(() => adminApi.curriculum(), []);
-  const [activeTab, setActiveTab] = useState(0);
+  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parseInt(searchParams.get('tab') || '0');
+  const setActiveTab = (index) => {
+    setSearchParams({ tab: index.toString() });
+  };
+
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
 
@@ -575,14 +1246,10 @@ export function AdminCurriculum() {
       return [
         [
           { name: 'title', label: 'Module Title', required: true },
-          { name: 'subtitle', label: 'Subtitle' },
-          { name: 'level', label: 'Level', options: ['Beginner', 'Intermediate', 'Advanced'] },
-          { name: 'order_index', label: 'Order', type: 'number' },
         ],
         [
           { name: 'title', label: 'Chapter Title', required: true },
           { name: 'module_id', label: 'Module', required: true, options: (data.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
-          { name: 'order_index', label: 'Order', type: 'number' },
         ],
         [
           { name: 'title', label: 'Story Title', required: true },
@@ -596,10 +1263,8 @@ export function AdminCurriculum() {
               .map(c => ({ label: c.title, value: c.chapter_id })) 
           },
           { name: 'description', label: 'Short Description', type: 'textarea' },
-          { name: 'content', label: 'Story Content', type: 'textarea' },
-          { name: 'principle_ids', label: 'Linked Principles', type: 'multiselect', options: (data.principles || []).map(p => ({ label: p.name, value: p.id })) },
           { name: 'status', label: 'Status', options: ['published', 'draft'] },
-          { name: 'order_index', label: 'Order', type: 'number' },
+          { name: 'tags', label: 'Tags (comma separated)' },
         ]
       ][activeTab];
     };
@@ -607,107 +1272,107 @@ export function AdminCurriculum() {
 
   const filteredModules = (data?.modules || []).filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
   const filteredChapters = (data?.chapters || []).filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
-  const filteredStories = (data?.stories || []).filter(s => s.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <PageShell role="admin" title="Curriculum">
       {loading ? (
         <LoadingState />
       ) : (
-        <VStack align="stretch" spacing={6}>
-          <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
-          
-          <Tabs index={activeTab} onChange={setActiveTab} variant="enclosed">
-            <TabList>
-              <Tab>Modules</Tab>
-              <Tab>Chapters</Tab>
-              <Tab>Stories</Tab>
-            </TabList>
-            <TabPanels>
-              <TabPanel px={0} pt={6}>
-                <Button mb={6} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => { setEditing(null); modal.onOpen(); }}>Add Module</Button>
+        <VStack align="stretch" spacing={0} h="calc(100vh - 120px)">
+          {/* Sticky Header Section */}
+          <Box 
+            position="sticky" 
+            top="-28px" 
+            zIndex="20" 
+            bg="#FAF7F0" 
+            pt="4"
+            pb="4" 
+            borderBottom="1px solid rgba(214,168,79,0.2)"
+            boxShadow="0 8px 24px rgba(10, 20, 40, 0.04)"
+          >
+            <VStack align="stretch" spacing={4}>
+              <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
+              
+              <Flex justify="space-between" align="center">
+                <Tabs index={activeTab} onChange={setActiveTab} variant="enclosed" mb="-1px">
+                  <TabList borderBottom="none">
+                    <Tab _selected={{ color: 'brand.goldDark', borderColor: 'rgba(214,168,79,0.2)', borderBottomColor: '#FAF7F0' }}>Modules</Tab>
+                    <Tab _selected={{ color: 'brand.goldDark', borderColor: 'rgba(214,168,79,0.2)', borderBottomColor: '#FAF7F0' }}>Chapters</Tab>
+                    <Tab _selected={{ color: 'brand.goldDark', borderColor: 'rgba(214,168,79,0.2)', borderBottomColor: '#FAF7F0' }}>Stories</Tab>
+                  </TabList>
+                </Tabs>
+
+                <Button 
+                  bg="brand.navy" 
+                  color="white" 
+                  _hover={{ bg: 'brand.goldDark' }} 
+                  onClick={() => { setEditing(null); modal.onOpen(); }}
+                  size="md"
+                  px={8}
+                >
+                  Add {['Module', 'Chapter', 'Story'][activeTab]}
+                </Button>
+              </Flex>
+            </VStack>
+          </Box>
+
+          {/* Scrollable Content Section */}
+          <Box overflowY="auto" flex="1" pt={8} pr={2} sx={{
+            '&::-webkit-scrollbar': { width: '6px' },
+            '&::-webkit-scrollbar-track': { background: 'transparent' },
+            '&::-webkit-scrollbar-thumb': { background: 'rgba(214,168,79,0.2)', borderRadius: '10px' },
+          }}>
+            <Box pb={10}>
+              {activeTab === 0 && (
                 <DataTable
                   items={filteredModules}
                   columns={[
                     { key: 'title', label: 'MODULE', bold: true },
-                    { key: 'level', label: 'LEVEL', badge: true },
-                    { key: 'order_index', label: 'ORDER' },
+                    { key: 'chaptersCount', label: 'CHAPTERS' },
                   ]}
                   onEdit={(item) => { setEditing(item); modal.onOpen(); }}
                   onDelete={handleDelete}
                 />
-              </TabPanel>
+              )}
               
-              <TabPanel px={0} pt={6}>
-                <Button mb={6} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => { setEditing(null); modal.onOpen(); }}>Add Chapter</Button>
-                {filteredModules.map(module => {
-                  const moduleChapters = filteredChapters.filter(c => c.module_id === module.module_id);
-                  return (
-                    <Box key={module.module_id} mb={8} p={5} bg="#FFFDF8" borderRadius="14px" border="1px solid rgba(214,168,79,0.25)">
-                      <Flex justify="space-between" align="center" mb={4}>
-                        <Box>
-                          <Heading size="md" color="brand.navy">{module.title}</Heading>
-                          <Text color="brand.muted" fontSize="sm">{module.subtitle || 'No description'}</Text>
-                        </Box>
-                        <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
-                          {moduleChapters.length} Chapters
-                        </Badge>
-                      </Flex>
-                      {moduleChapters.length > 0 ? (
-                        <DataTable
-                          items={moduleChapters}
-                          columns={[
-                            { key: 'order_index', label: 'ORDER' },
-                            { key: 'title', label: 'CHAPTER', bold: true },
-                            { key: 'storiesCount', label: 'STORIES' },
-                          ]}
-                          onEdit={(item) => { setEditing(item); modal.onOpen(); }}
-                          onDelete={handleDelete}
-                        />
-                      ) : (
-                        <Text color="brand.muted" fontStyle="italic" py={4}>No chapters added to this module yet.</Text>
-                      )}
-                    </Box>
-                  );
-                })}
-              </TabPanel>
+              {activeTab === 1 && (
+                <>
+                  {filteredModules.map(module => {
+                    const moduleChapters = filteredChapters.filter(c => c.module_id === module.module_id);
+                    return (
+                      <Box key={module.module_id} mb={8} p={5} bg="#FFFDF8" borderRadius="14px" border="1px solid rgba(214,168,79,0.25)">
+                        <Flex justify="space-between" align="center" mb={4}>
+                          <Box>
+                            <Heading size="md" color="brand.navy">{module.title}</Heading>
+                          </Box>
+                          <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
+                            {moduleChapters.length} Chapters
+                          </Badge>
+                        </Flex>
+                        {moduleChapters.length > 0 ? (
+                          <DataTable
+                            items={moduleChapters}
+                            columns={[
+                              { key: 'title', label: 'CHAPTER', bold: true },
+                              { key: 'storiesCount', label: 'STORIES' },
+                            ]}
+                            onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                            onDelete={handleDelete}
+                          />
+                        ) : (
+                          <Text color="brand.muted" fontStyle="italic" py={4}>No chapters added to this module yet.</Text>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </>
+              )}
               
-              <TabPanel px={0} pt={6}>
-                <Button mb={6} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => { setEditing(null); modal.onOpen(); }}>Add Story</Button>
-                {filteredChapters.map(chapter => {
-                  const chapterStories = filteredStories.filter(s => s.chapter_id === chapter.chapter_id);
-                  return (
-                    <Box key={chapter.chapter_id} mb={8} p={5} bg="#FFFDF8" borderRadius="14px" border="1px solid rgba(214,168,79,0.25)">
-                      <Flex justify="space-between" align="center" mb={4}>
-                        <Box>
-                          <Heading size="md" color="brand.navy">{chapter.title}</Heading>
-                          <Text color="brand.muted" fontSize="sm">Module: {chapter.module_name}</Text>
-                        </Box>
-                        <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
-                          {chapterStories.length} Stories
-                        </Badge>
-                      </Flex>
-                      {chapterStories.length > 0 ? (
-                        <DataTable
-                          items={chapterStories}
-                          columns={[
-                            { key: 'order_index', label: 'ORDER' },
-                            { key: 'title', label: 'STORY', bold: true },
-                            { key: 'principle_ids', label: 'PRINCIPLES', render: (val) => <PrincipleBadges principleIds={val} allPrinciples={data?.principles || []} /> },
-                            { key: 'status', label: 'STATUS', badge: true },
-                          ]}
-                          onEdit={(item) => { setEditing(item); modal.onOpen(); }}
-                          onDelete={handleDelete}
-                        />
-                      ) : (
-                        <Text color="brand.muted" fontStyle="italic" py={4}>No stories added to this chapter yet.</Text>
-                      )}
-                    </Box>
-                  );
-                })}
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+              {activeTab === 2 && (
+                <NestedStoriesView search={search} principles={data?.principles} />
+              )}
+            </Box>
+          </Box>
         </VStack>
       )}
       <FormModal
@@ -715,7 +1380,7 @@ export function AdminCurriculum() {
         onClose={modal.onClose}
         title={`${editing ? 'Edit' : 'Add'} ${['Module', 'Chapter', 'Story'][activeTab]}`}
         fields={fields}
-        initialValues={editing || {}}
+        initialValues={editing || EMPTY_OBJECT}
         onSubmit={handleSave}
       />
     </PageShell>
@@ -745,13 +1410,67 @@ export function AdminSettings() {
 }
 
 export function AdminPuzzles() {
-  return <AdminCrudPage title="Puzzles" resource="puzzles" fields={[{ name: 'title', label: 'Title', required: true }, { name: 'difficulty', label: 'Difficulty', options: ['Easy','Medium','Hard'] }, { name: 'theme', label: 'Theme' }, { name: 'expectedMove', label: 'Expected Move' }, { name: 'explanation', label: 'Explanation', type: 'textarea' }]} />;
+  const { data: principles = [] } = useLoad(() => adminApi.list('principles'), []);
+  
+  return (
+    <AdminCrudPage 
+      title="Chess Puzzles" 
+      resource="puzzles" 
+      columns={[
+        { key: 'id', label: 'PUZZLE ID', bold: true },
+        { key: 'principle_name', label: 'PRINCIPLE' },
+        { key: 'isdone', label: 'STATUS', badge: true },
+      ]}
+      fields={[
+        { name: 'id', label: 'Puzzle ID', required: true }, 
+        { 
+          name: 'principle_id', 
+          label: 'Principle', 
+          options: (principles || []).map(p => ({ label: p.name, value: p.id })) 
+        }, 
+        { name: 'fen_with_move', label: 'FEN with Move' }, 
+        { name: 'answer', label: 'Answer' },
+        { name: 'isdone', label: 'Done', type: 'checkbox' }
+      ]} 
+    />
+  );
 }
-export function AdminStories() {
-  return <AdminCrudPage title="Stories" resource="stories" fields={[{ name: 'title', label: 'Title', required: true }, { name: 'chapter', label: 'Chapter' }, { name: 'lesson', label: 'Panchatantra Lesson', type: 'textarea' }, { name: 'chessConcept', label: 'Chess Concept' }, { name: 'body', label: 'Body', type: 'textarea' }, { name: 'status', label: 'Status', options: ['draft','published'] }]} />;
+
+export function AdminPositions() {
+  return (
+    <AdminCrudPage 
+      title="Positions" 
+      resource="positions" 
+      columns={[
+        { key: 'id', label: 'ID', bold: true },
+        { key: 'principle', label: 'PRINCIPLE' },
+        { key: 'isdone', label: 'STATUS', badge: true },
+      ]}
+      fields={[
+        { name: 'id', label: 'ID', required: true }, 
+        { name: 'principle', label: 'Principle' }, 
+        { name: 'fen_with_move', label: 'FEN with Move' }, 
+        { name: 'puzzle_list', label: 'Puzzle List (JSON)' },
+        { name: 'isdone', label: 'Done', type: 'checkbox' }
+      ]} 
+    />
+  );
 }
 export function AdminPrinciples() {
-  return <AdminCrudPage title="Principles" resource="principles" fields={[{ name: 'name', label: 'Name', required: true }, { name: 'category', label: 'Category' }, { name: 'explanation', label: 'Explanation', type: 'textarea' }]} />;
+  const { data } = useLoad(() => adminApi.list('principles'), []);
+  
+  return (
+    <AdminCrudPage 
+      title="Principles" 
+      resource="principles" 
+      columns={[
+        { key: 'name', label: 'Name', bold: true }
+      ]}
+      fields={[
+        { name: 'name', label: 'Name', required: true }
+      ]} 
+    />
+  );
 }
 export function AdminClasses() {
   return <AdminCrudPage title="Classes" resource="classes" fields={[{ name: 'title', label: 'Title', required: true }, { name: 'topic', label: 'Topic' }, { name: 'coach', label: 'Coach' }, { name: 'status', label: 'Status', options: ['upcoming','live','cancelled'] }]} />;

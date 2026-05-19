@@ -1,7 +1,14 @@
 # Dependencies
 node_modules/
+**/node_modules/
 .pnp
 .pnp.js
+
+# Local/archive folders
+Cliosgambit-old/
+
+# Markdown files
+*.md
 
 # Testing
 coverage/

@@ -73,7 +73,6 @@ export default function AdminDashboard() {
             <Box>
               <DashboardCard title="Quick Actions">
                 <SimpleGrid columns={2} spacing={3}>
-                  <QuickActionCard icon={MenuBookIcon} title="Add New Story" onClick={() => navigate('/admin/stories')} />
                   <QuickActionCard icon={ExtensionIcon} title="Add New Puzzle" onClick={() => navigate('/admin/puzzles')} />
                   <QuickActionCard icon={CalendarMonthIcon} title="Create Class" onClick={() => navigate('/admin/classes')} />
                   <QuickActionCard icon={PersonAddIcon} title="Invite Users" onClick={() => runAction('invite-users', 'Invite Users', { count: 5 })} />

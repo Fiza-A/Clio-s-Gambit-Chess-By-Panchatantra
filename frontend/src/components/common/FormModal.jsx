@@ -2,8 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Button, Checkbox, CheckboxGroup, FormControl, FormLabel, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select, SimpleGrid, Textarea, VStack } from '@chakra-ui/react';
 
 export default function FormModal({ isOpen, onClose, title, fields = [], initialValues = {}, onSubmit }) {
-  const [values, setValues] = useState(initialValues);
-  useEffect(() => setValues(initialValues || {}), [initialValues, isOpen]);
+  const [values, setValues] = useState(initialValues || {});
+
+  // Only update values when initialValues change OR modal opens
+  // Use a stringified version or specific trigger to avoid infinite loops with {}
+  useEffect(() => {
+    if (isOpen) {
+      setValues(initialValues || {});
+    }
+  }, [isOpen, JSON.stringify(initialValues)]);
 
   const currentFields = typeof fields === 'function' ? fields(values) : fields;
 

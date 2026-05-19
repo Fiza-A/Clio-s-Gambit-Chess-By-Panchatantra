@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-  timeout: 8000,
+  baseURL: 'http://127.0.0.1:5000/api',
+  timeout: 300000,
 });
 
 export async function fetchDashboard(role) {
