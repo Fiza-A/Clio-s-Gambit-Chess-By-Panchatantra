@@ -6,7 +6,7 @@ export default function ErrorState({ message = 'Something went wrong.' }) {
     <Alert status="error" borderRadius="14px">
       <AlertIcon />
       <AlertTitle>Could not load page</AlertTitle>
-      <AlertDescription>{message}</AlertDescription>
+      <AlertDescription whiteSpace="pre-line">{message}</AlertDescription>
     </Alert>
   );
 }

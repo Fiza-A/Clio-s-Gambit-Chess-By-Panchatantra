@@ -7,6 +7,7 @@ import ForgotPassword from '../pages/auth/ForgotPassword.jsx';
 import StudentDashboard from '../pages/StudentDashboard.jsx';
 import CoachDashboard from '../pages/CoachDashboard.jsx';
 import AdminDashboard from '../pages/AdminDashboard.jsx';
+import AchievementsPage from '../pages/AchievementsPage.jsx';
 import {
   AdminAchievements,
   AdminAnalytics,
@@ -106,7 +107,12 @@ export default function AppRoutes() {
         <Route path="/admin/principles" element={<AdminPrinciples />} />
         <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/analytics" element={<AdminAnalytics />} />
-        <Route path="/admin/achievements" element={<AdminAchievements />} />
+        <Route path="/admin/achievement-catalog" element={<AdminAchievements />} />
+        <Route path="/admin/achievements/all-games" element={<AchievementsPage view="all" />} />
+        <Route path="/admin/achievements/wins-in-row/sacrifices" element={<AchievementsPage view="sacrifices" />} />
+        <Route path="/admin/achievements/wins-in-row/brilliant" element={<AchievementsPage view="brilliant" />} />
+        <Route path="/admin/achievements/wins-in-row" element={<AchievementsPage view="streaks" />} />
+        <Route path="/admin/achievements" element={<AchievementsPage />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/admin/roles-permissions" element={<RolesPermissions />} />
         <Route path="/admin/settings" element={<AdminSettings />} />

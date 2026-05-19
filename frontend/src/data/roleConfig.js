@@ -17,6 +17,7 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import PersonIcon from '@mui/icons-material/Person';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 
 export const roleConfig = {
   admin: {
@@ -27,6 +28,7 @@ export const roleConfig = {
       ['Dashboard', DashboardIcon, '/admin/dashboard'], ['Users', PeopleAltIcon, '/admin/users'], ['Games Details', SportsEsportsIcon, '/admin/games-details'], ['Curriculum', MenuBookIcon, '/admin/curriculum'],
       ['Positions', GridViewIcon, '/admin/positions'], ['Chess Puzzles', ExtensionIcon, '/admin/puzzles'], ['Principles', PsychologyIcon, '/admin/principles'],
       ['Classes', CalendarMonthIcon, '/admin/classes'], ['Analytics', AnalyticsIcon, '/admin/analytics'], ['Achievements', EmojiEventsIcon, '/admin/achievements'],
+      ['Achievement catalog', ListAltIcon, '/admin/achievement-catalog'],
       ['Reports', AssignmentIcon, '/admin/reports'], ['Roles & Permissions', SecurityIcon, '/admin/roles-permissions'], ['Settings', SettingsIcon, '/admin/settings'],
     ],
   },

@@ -1476,5 +1476,5 @@ export function AdminClasses() {
   return <AdminCrudPage title="Classes" resource="classes" fields={[{ name: 'title', label: 'Title', required: true }, { name: 'topic', label: 'Topic' }, { name: 'coach', label: 'Coach' }, { name: 'status', label: 'Status', options: ['upcoming','live','cancelled'] }]} />;
 }
 export function AdminAchievements() {
-  return <AdminCrudPage title="Achievements" resource="achievements" fields={[{ name: 'title', label: 'Title', required: true }, { name: 'rule', label: 'Unlock Rule', type: 'textarea' }, { name: 'progress', label: 'Progress' }]} />;
+  return <AdminCrudPage title="Achievement catalog" resource="achievements" fields={[{ name: 'title', label: 'Title', required: true }, { name: 'rule', label: 'Unlock Rule', type: 'textarea' }, { name: 'progress', label: 'Progress' }]} />;
 }
