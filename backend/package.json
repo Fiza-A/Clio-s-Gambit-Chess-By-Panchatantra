@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "kill-port-5000": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/kill-port-5000.ps1"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -14,6 +15,7 @@
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.7",
     "pg": "^8.20.0",
     "sqlite3": "^6.0.1"

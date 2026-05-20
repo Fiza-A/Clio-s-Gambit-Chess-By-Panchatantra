@@ -15,7 +15,6 @@ import {
   AdminCrudPage,
   AdminCurriculum,
   AdminPrinciples,
-  AdminPositions,
   AdminPuzzles,
   AdminReports,
   AdminSettings,
@@ -102,7 +101,7 @@ export default function AppRoutes() {
         <Route path="/admin/users/:id" element={<AdminUserDetail />} />
         <Route path="/admin/games-details" element={<AdminGamesDetails />} />
         <Route path="/admin/curriculum" element={<AdminCurriculum />} />
-        <Route path="/admin/positions" element={<AdminPositions />} />
+        <Route path="/admin/positions" element={<Navigate to="/admin/curriculum?tab=principles" replace />} />
         <Route path="/admin/puzzles" element={<AdminPuzzles />} />
         <Route path="/admin/principles" element={<AdminPrinciples />} />
         <Route path="/admin/classes" element={<AdminClasses />} />

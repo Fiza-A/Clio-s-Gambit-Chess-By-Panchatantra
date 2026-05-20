@@ -6,11 +6,19 @@ import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import coachRoutes from './routes/coachRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import chessComRoutes from './routes/chessComRoutes.js';
 
 dotenv.config();
 
 const app = express();
-const port = 5000;
+
+function resolveListenPort() {
+  const n = Number(process.env.PORT);
+  if (Number.isFinite(n) && n >= 1 && n <= 65535) return n;
+  return 5000;
+}
+
+const port = resolveListenPort();
 
 app.use(cors());
 app.use(express.json());
@@ -18,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/coach', coachRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chesscom', chessComRoutes);
 
 app.get('/', (_req, res) => {
   res.type('html').send(`
@@ -95,6 +104,21 @@ app.post('/api/actions', (req, res) => {
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'chess-by-panchatantra' }));
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Chess by Panchatantra API running on http://localhost:${port}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[ERROR] Port ${port} is already in use — another process (often a previous \`npm run dev\`) is bound to this port.`);
+    console.error('Fix one of:');
+    console.error(`  • Stop the other backend (close its terminal, or stop the task in your IDE).`);
+    console.error(`  • Windows — find PID:  netstat -ano | findstr :${port}`);
+    console.error('    Then end it:        taskkill /PID <pid> /F');
+    console.error(`  • PowerShell:         Get-NetTCPConnection -LocalPort ${port} | Format-Table OwningProcess,State`);
+    console.error('  • Or use another port: set PORT=5001 in backend/.env, then set VITE_API_BASE_URL=http://127.0.0.1:5001/api in frontend/.env and restart both.\n');
+    process.exit(1);
+    return;
+  }
+  throw err;
 });

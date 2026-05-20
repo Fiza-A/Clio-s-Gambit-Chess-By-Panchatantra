@@ -23,6 +23,11 @@ export async function login(req, res) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    if (user.is_active === false) {
+      console.warn(`[AUTH] Login blocked: inactive account for email: ${email}`);
+      return res.status(403).json({ error: 'This account has been paused. Contact an administrator.' });
+    }
+
     console.log(`[AUTH] Login successful for email: ${email}, name: ${user.Player_Name}`);
 
     const userData = {

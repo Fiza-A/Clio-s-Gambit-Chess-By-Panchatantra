@@ -1,4 +1,4 @@
-import { api } from './client.js';
+import { api, API_BASE_URL } from './client.js';
 
 const CACHE_KEY = 'cliosGambitAchievements';
 
@@ -108,7 +108,7 @@ function mapAxiosChessError(err, fallbackLabel) {
   if (serverMsg) return new Error(serverMsg);
   if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
     return new Error(
-      'Could not reach the app server. Start the backend (port 5000) so Chess.com data can be loaded securely.',
+      `Could not reach the app server at ${API_BASE_URL}. Start the backend or set VITE_API_BASE_URL in frontend/.env so Chess.com data can be loaded securely.`,
     );
   }
   return new Error(`${fallbackLabel} (${status || err.message || 'unknown'}).`);

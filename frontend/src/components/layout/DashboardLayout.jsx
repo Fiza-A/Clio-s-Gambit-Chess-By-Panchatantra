@@ -12,11 +12,12 @@ export default function DashboardLayout({ role, children }) {
         minH="100vh" 
         w={{ base: '100%', lg: 'calc(100vw - 280px)' }} 
         overflowX="hidden" 
+        bg="brand.cream"
         px={{ base: 4, md: 7 }} 
         py={{ base: 5, md: 7 }}
       >
         <Container maxW="1540px" px="0">
-          <Box position="sticky" top="0" zIndex="10" bg="#FCF8F1" py={2} mb={4}>
+          <Box position="sticky" top="0" zIndex="10" bg="brand.cream" py={2} mb={4}>
             <AppBreadcrumbs />
           </Box>
           {children}

@@ -4,7 +4,6 @@ import SchoolIcon from '@mui/icons-material/School';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
 import ExtensionIcon from '@mui/icons-material/Extension';
-import GridViewIcon from '@mui/icons-material/GridView';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import MessageIcon from '@mui/icons-material/Message';
@@ -25,8 +24,8 @@ export const roleConfig = {
     quote: 'A wise king learns every day.',
     quoteBy: 'Panchatantra',
     nav: [
-      ['Dashboard', DashboardIcon, '/admin/dashboard'], ['Users', PeopleAltIcon, '/admin/users'], ['Games Details', SportsEsportsIcon, '/admin/games-details'], ['Curriculum', MenuBookIcon, '/admin/curriculum'],
-      ['Positions', GridViewIcon, '/admin/positions'], ['Chess Puzzles', ExtensionIcon, '/admin/puzzles'], ['Principles', PsychologyIcon, '/admin/principles'],
+      ['Dashboard', DashboardIcon, '/admin/dashboard'], ['Users', PeopleAltIcon, '/admin/users'], ['Player Details', SportsEsportsIcon, '/admin/games-details'], ['Curriculum', MenuBookIcon, '/admin/curriculum'],
+      ['Chess Puzzles', ExtensionIcon, '/admin/puzzles'],
       ['Classes', CalendarMonthIcon, '/admin/classes'], ['Analytics', AnalyticsIcon, '/admin/analytics'], ['Achievements', EmojiEventsIcon, '/admin/achievements'],
       ['Achievement catalog', ListAltIcon, '/admin/achievement-catalog'],
       ['Reports', AssignmentIcon, '/admin/reports'], ['Roles & Permissions', SecurityIcon, '/admin/roles-permissions'], ['Settings', SettingsIcon, '/admin/settings'],

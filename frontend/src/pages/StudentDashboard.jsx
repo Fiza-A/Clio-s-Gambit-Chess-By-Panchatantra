@@ -14,7 +14,7 @@ import RadarIdentityChart from '../components/charts/RadarIdentityChart.jsx';
 import JourneyHero from '../components/student/JourneyHero.jsx';
 import RecommendedStories from '../components/student/RecommendedStories.jsx';
 import DailyPuzzle from '../components/student/DailyPuzzle.jsx';
-import { fetchDashboard } from '../api/client.js';
+import { API_BASE_URL, fetchDashboard } from '../api/client.js';
 import useDashboardActions from '../hooks/useDashboardActions.js';
 
 export default function StudentDashboard() {
@@ -31,7 +31,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchDashboard('student').then(setData).catch(() => {
-      setError('Could not load student dashboard data. Make sure the Express server is running on port 5000.');
+      setError(`Could not load student dashboard data. Make sure the API is running and reachable at ${API_BASE_URL}.`);
       toast({ status: 'error', title: 'Dashboard API unavailable', duration: 4500 });
     });
   }, [toast]);

@@ -1,102 +1,50 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import sqlite3 from 'sqlite3';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { adminDashboard, coachDashboard, studentDashboard } from './dashboardData.js';
-
-dotenv.config();
-
-console.log(`[DATABASE] Initialization - DB_TYPE: ${process.env.DB_TYPE || 'postgres (default)'}`);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dbPath = path.join(__dirname, 'db.json');
-const sqliteDbPath = path.resolve(__dirname, '../../database.db');
 
-const useLocalDb = process.env.DB_TYPE === 'sqlite';
+// Explicitly load .env from the backend directory
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+console.log('[DATABASE] Connecting to Supabase (PostgreSQL)...');
+console.log('[DATABASE] DATABASE_URL present:', !!process.env.DATABASE_URL);
 
 // PostgreSQL Pool
 const { Pool } = pg;
-const pool = useLocalDb ? null : new Pool({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-if (!useLocalDb && pool) {
-  console.log('[DATABASE] PostgreSQL Pool created');
+if (pool) {
+  console.log('[DATABASE] Supabase Connection Pool created');
 }
-
-// SQLite Connection
-const localDb = useLocalDb ? new sqlite3.Database(sqliteDbPath, (err) => {
-  if (err) console.error('[DATABASE] SQLite Connection Error:', err);
-  else console.log('[DATABASE] SQLite Connected successfully at:', sqliteDbPath);
-}) : null;
 
 export async function query(text, params) {
   console.log(`[DATABASE] Executing Query: ${text}`);
   if (params) console.log(`[DATABASE] With Params: ${JSON.stringify(params)}`);
 
-  if (useLocalDb) {
-    return new Promise((resolve, reject) => {
-      const sqliteQuery = text.replace(/\$(\d+)/g, '?');
-      localDb.all(sqliteQuery, params, (err, rows) => {
-        if (err) {
-          console.error('[DATABASE] SQLite Query Error:', err);
-          reject(err);
-        } else {
-          console.log(`[DATABASE] SQLite Result: ${rows.length} rows returned`);
-          resolve({ rows });
-        }
-      });
-    });
-  }
-  
   try {
     const res = await pool.query(text, params);
-    console.log(`[DATABASE] PostgreSQL Result: ${res.rows.length} rows returned`);
+    console.log(`[DATABASE] Supabase Result: ${res.rows.length} rows returned`);
     return res;
   } catch (err) {
-    console.error('[DATABASE] PostgreSQL Query Error:', err);
+    console.error('[DATABASE] Supabase Query Error:', err);
     throw err;
   }
 }
 
-const seed = {
-  dashboards: {
-    admin: adminDashboard,
-    coach: coachDashboard,
-    student: studentDashboard,
-  },
-  collections: {
-    users: [],
-    stories: [],
-    puzzles: [],
-    classes: [],
-    resources: [],
-    actionLog: [],
-  },
-};
-
-function ensureDatabase() {
-  if (!fs.existsSync(dbPath)) {
-    fs.writeFileSync(dbPath, JSON.stringify(seed, null, 2));
-  }
-}
-
-export function readDb() {
-  ensureDatabase();
-  return JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-}
-
-export function writeDb(db) {
-  fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-  return db;
-}
-
+// Keeping mock data for dashboards temporarily as they are not fully migrated to SQL yet
 export function getDashboard(role) {
-  // For now, keep returning from JSON, but we could migrate to SQL
-  return readDb().dashboards[role];
+  if (role === 'admin') return adminDashboard;
+  if (role === 'coach') return coachDashboard;
+  return studentDashboard;
 }
 
 export function getCollection(name) {

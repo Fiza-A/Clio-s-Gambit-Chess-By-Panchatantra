@@ -113,8 +113,23 @@ export function storyProgress(req, res) {
   writeDb(db);
   res.json({ story: found.story, module: found.module, chapter: found.chapter });
 }
-export const principles = (_req, res) => res.json(readDb().student.principles);
-export const principle = (req, res) => res.json(byId(readDb().student.principles, req.params.id) || {});
+export const principles = async (_req, res) => {
+  try {
+    const result = await query('SELECT id, name FROM public.principles ORDER BY name ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const principle = async (req, res) => {
+  try {
+    const result = await query('SELECT id, name FROM public.principles WHERE id = $1', [req.params.id]);
+    res.json(result.rows[0] || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 export function learned(req, res) {
   const db = readDb();
   const item = byId(db.student.principles, req.params.id);
@@ -123,25 +138,49 @@ export function learned(req, res) {
   writeDb(db);
   res.json(item);
 }
-export const puzzles = (_req, res) => res.json(readDb().student.puzzles);
-export const puzzle = (req, res) => res.json(byId(readDb().student.puzzles, req.params.id) || {});
-export function submitPuzzle(req, res) {
-  const db = readDb();
-  const item = byId(db.student.puzzles, req.params.id);
-  const move = `${req.body.from || ''}-${req.body.to || ''}`.toLowerCase();
-  const correct = move === item.expectedMove.toLowerCase();
-  if (correct) {
-    item.solved = true;
-    db.student.profile.points += item.reward;
-    db.student.profile.streak += 1;
-    db.dashboards.student.stats[1].value = String(Number(db.dashboards.student.stats[1].value) + 1);
-    db.dashboards.student.stats[2].value = '88%';
-  } else {
-    db.student.mistakes.unshift({ id: `mistake-${Date.now()}`, puzzle: item.title, theme: item.theme, note: `Submitted ${move || 'empty move'}`, reviewed: false });
+export async function puzzles(_req, res) {
+  try {
+    const result = await query('SELECT chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer FROM public.chess_puzzle ORDER BY chess_puzzle_id ASC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch puzzles' });
   }
-  logAction(db, 'student', `${correct ? 'Solved' : 'Missed'} puzzle ${item.title}`);
-  writeDb(db);
-  res.json({ correct, puzzle: item, profile: db.student.profile, message: correct ? item.explanation : 'Not quite. Review this mistake and try again.' });
+}
+
+export async function puzzle(req, res) {
+  try {
+    const result = await query('SELECT chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer FROM public.chess_puzzle WHERE chess_puzzle_id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Puzzle not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch puzzle' });
+  }
+}
+
+export async function submitPuzzle(req, res) {
+  try {
+    const { id } = req.params;
+    const { move } = req.body;
+    
+    const result = await query('SELECT * FROM public.chess_puzzle WHERE chess_puzzle_id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Puzzle not found' });
+    
+    const item = result.rows[0];
+    const correct = String(move).trim().toLowerCase() === String(item.answer).trim().toLowerCase();
+    
+    if (correct) {
+      await query('UPDATE public.chess_puzzle SET isdone = true WHERE chess_puzzle_id = $1', [id]);
+    }
+    
+    res.json({ 
+      correct, 
+      puzzle: { id: item.chess_puzzle_id, ...item }, 
+      message: correct ? 'Correct! Puzzle solved.' : 'Not quite. Review this mistake and try again.' 
+    });
+  } catch (err) {
+    console.error('Error submitting puzzle:', err);
+    res.status(500).json({ error: 'Failed to submit puzzle' });
+  }
 }
 export const achievements = (_req, res) => res.json(readDb().student.achievements);
 export const analytics = (_req, res) => res.json(readDb().student.analytics);

@@ -92,13 +92,16 @@ export async function usersList(req, res) {
   try {
     const result = await query('SELECT * FROM "Login"');
     console.log(`[ADMIN API] Successfully fetched ${result.rows.length} users from DB`);
-    const formattedUsers = result.rows.map(user => ({
-      id: user.Chess_com_ID || user.email,
-      name: user.Player_Name,
-      role: user.Role,
-      status: 'ACTIVE', // Defaulting to ACTIVE since column doesn't exist in DB
-      email: user.email
-    }));
+    const formattedUsers = result.rows.map((user) => {
+      const active = user.is_active !== false && user.is_active !== 0;
+      return {
+        id: user.Chess_com_ID || user.email,
+        name: user.Player_Name,
+        role: user.Role,
+        status: active ? 'active' : 'inactive',
+        email: user.email,
+      };
+    });
     res.json(formattedUsers);
   } catch (err) {
     console.error('[ADMIN API] Error in usersList:', err);
@@ -113,8 +116,8 @@ export const users = {
       const { email, password, name, role, chessId } = req.body;
       const hashedPassword = await bcrypt.hash(password || 'password123', 10);
       await query(
-        'INSERT INTO "Login" (email, password, "Player_Name", "Role", "Chess_com_ID") VALUES ($1, $2, $3, $4, $5)',
-        [email, hashedPassword, name, role || 'student', chessId]
+        'INSERT INTO "Login" (email, password, "Player_Name", "Role", "Chess_com_ID", is_active) VALUES ($1, $2, $3, $4, $5, $6)',
+        [email, hashedPassword, name, role || 'student', chessId, true]
       );
       res.status(201).json({ ok: true });
     } catch (err) {
@@ -123,10 +126,33 @@ export const users = {
   },
   update: async (req, res) => {
     try {
-      const { name, role } = req.body;
+      const { name, role, is_active } = req.body;
+      const id = req.params.id;
+      const sets = [];
+      const vals = [];
+      let i = 1;
+      if (name !== undefined) {
+        sets.push(`"Player_Name" = $${i}`);
+        vals.push(name);
+        i += 1;
+      }
+      if (role !== undefined) {
+        sets.push(`"Role" = $${i}`);
+        vals.push(role);
+        i += 1;
+      }
+      if (is_active !== undefined) {
+        sets.push(`is_active = $${i}`);
+        vals.push(Boolean(is_active));
+        i += 1;
+      }
+      if (!sets.length) {
+        return res.status(400).json({ error: 'No updatable fields provided' });
+      }
+      vals.push(id);
       await query(
-        'UPDATE "Login" SET "Player_Name" = $1, "Role" = $2 WHERE "Chess_com_ID" = $3 OR email = $3',
-        [name, role, req.params.id]
+        `UPDATE "Login" SET ${sets.join(', ')} WHERE "Chess_com_ID" = $${i} OR email = $${i}`,
+        vals,
       );
       res.json({ ok: true });
     } catch (err) {

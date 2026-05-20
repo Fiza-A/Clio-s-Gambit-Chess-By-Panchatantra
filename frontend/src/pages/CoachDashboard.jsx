@@ -20,7 +20,7 @@ import DonutChart from '../components/charts/DonutChart.jsx';
 import StudentList from '../components/coach/StudentList.jsx';
 import SchedulePanel from '../components/coach/SchedulePanel.jsx';
 import StrengthWeaknessCard from '../components/coach/StrengthWeaknessCard.jsx';
-import { fetchDashboard } from '../api/client.js';
+import { API_BASE_URL, fetchDashboard } from '../api/client.js';
 import useDashboardActions from '../hooks/useDashboardActions.js';
 import FormModal from '../components/common/FormModal.jsx';
 import { coachApi } from '../api/coachApi.js';
@@ -40,7 +40,7 @@ export default function CoachDashboard() {
 
   useEffect(() => {
     fetchDashboard('coach').then(setData).catch(() => {
-      setError('Could not load coach dashboard data. Make sure the Express server is running on port 5000.');
+      setError(`Could not load coach dashboard data. Make sure the API is running and reachable at ${API_BASE_URL}.`);
       toast({ status: 'error', title: 'Dashboard API unavailable', duration: 4500 });
     });
   }, [toast]);

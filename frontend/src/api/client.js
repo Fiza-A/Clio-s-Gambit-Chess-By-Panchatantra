@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+/** Backend root including `/api`. Override with `VITE_API_BASE_URL` in `frontend/.env`. */
+const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000/api';
+export const API_BASE_URL = String(rawBase).replace(/\/+$/, '');
+
 export const api = axios.create({
-  baseURL: 'http://127.0.0.1:5000/api',
+  baseURL: API_BASE_URL,
   timeout: 300000,
 });
 

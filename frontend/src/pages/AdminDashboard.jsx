@@ -20,7 +20,7 @@ import DonutChart from '../components/charts/DonutChart.jsx';
 import RadialEngagement from '../components/charts/RadialEngagement.jsx';
 import ContentOverview from '../components/admin/ContentOverview.jsx';
 import ModuleTable from '../components/admin/ModuleTable.jsx';
-import { fetchDashboard } from '../api/client.js';
+import { API_BASE_URL, fetchDashboard } from '../api/client.js';
 import useDashboardActions from '../hooks/useDashboardActions.js';
 
 export default function AdminDashboard() {
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboard('admin').then(setData).catch(() => {
-      setError('Could not load admin dashboard data. Make sure the Express server is running on port 5000.');
+      setError(`Could not load admin dashboard data. Make sure the API is running and reachable at ${API_BASE_URL}.`);
       toast({ status: 'error', title: 'Dashboard API unavailable', duration: 4500 });
     });
   }, [toast]);

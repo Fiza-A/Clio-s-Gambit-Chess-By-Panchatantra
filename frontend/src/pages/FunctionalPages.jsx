@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Box, Button, Flex, FormControl, FormLabel, Grid, Heading, HStack, Input, Progress, Select, SimpleGrid, Spinner, Stat, StatHelpText, StatLabel, StatNumber, Switch, Tab, TabList, TabPanel, TabPanels, Table, Tbody, Td, Th, Thead, Tr, Tabs, Text, Textarea, useDisclosure, useToast, VStack, Divider, Link } from '@chakra-ui/react';
 import { ExternalLink } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -41,12 +41,20 @@ function useLoad(loader, deps = []) {
   return { data, error, setData, reload };
 }
 
-function PageShell({ role, title, subtitle, children }) {
+function PageShell({ role, title, subtitle, children, dashboardHeading = false }) {
   return (
     <DashboardLayout role={role}>
       <Flex justify="space-between" align="flex-start" mb={5} gap={4}>
         <Box>
-          <Heading>{title}</Heading>
+          <Heading
+            fontSize={dashboardHeading ? { base: '26px', md: '32px' } : undefined}
+            fontFamily={dashboardHeading ? 'heading' : undefined}
+            fontWeight={dashboardHeading ? '800' : undefined}
+            letterSpacing={dashboardHeading ? '-0.02em' : undefined}
+            color={dashboardHeading ? 'brand.navy' : undefined}
+          >
+            {title}
+          </Heading>
           {subtitle && <Text color="brand.muted" mt={1}>{subtitle}</Text>}
         </Box>
       </Flex>
@@ -458,11 +466,65 @@ export function AdminUsers() {
 
   const users = filterItems(data || [], search, filter);
 
-  const columns = [
-    { key: 'name', label: 'NAME', bold: true },
-    { key: 'role', label: 'ROLE', badge: true },
-    { key: 'status', label: 'STATUS', status: true },
-  ];
+  const columns = useMemo(
+    () => [
+      { key: 'name', label: 'NAME', bold: true },
+      { key: 'role', label: 'ROLE', badge: true },
+      {
+        key: 'status',
+        label: 'STATUS',
+        render: (status) => (
+          <Badge
+            textTransform="uppercase"
+            fontSize="10px"
+            px={2}
+            py={0.5}
+            borderRadius="full"
+            {...(status === 'inactive'
+              ? { bg: 'orange.100', color: 'orange.800' }
+              : { bg: 'green.100', color: 'green.800' })}
+          >
+            {status === 'inactive' ? 'inactive' : 'active'}
+          </Badge>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const handlePauseUser = useCallback(
+    async (user) => {
+      if (!window.confirm('Are you sure you want to pause this user?')) return;
+      try {
+        await adminApi.update('users', user.id, { is_active: false });
+        toast({
+          title: 'User paused',
+          description: `${user.name} is set to inactive and cannot sign in until an admin reactivates the account.`,
+          status: 'success',
+        });
+        reload();
+      } catch (err) {
+        toast({
+          title: 'Pause failed',
+          description: err.response?.data?.error || err.message,
+          status: 'error',
+        });
+      }
+    },
+    [toast, reload],
+  );
+
+  const userExtraActions = useMemo(
+    () => [
+      {
+        label: 'Pause',
+        colorScheme: 'orange',
+        isDisabled: (u) => u.status === 'inactive',
+        onClick: handlePauseUser,
+      },
+    ],
+    [handlePauseUser],
+  );
 
   const handleAction = (action, user) => {
     if (action === 'delete') {
@@ -491,6 +553,7 @@ export function AdminUsers() {
             items={users}
             onView={(user) => toast({ title: `Viewing ${user.name}`, status: 'info' })}
             onEdit={(user) => toast({ title: `Editing ${user.name}`, status: 'info' })}
+            extraActions={userExtraActions}
             onDelete={(user) => handleAction('delete', user)}
           />
         </VStack>
@@ -507,15 +570,91 @@ export function AdminUserDetail() {
   return <PageShell role="admin" title={data.name}><DashboardCard><Text>Email: {data.email}</Text><Text>Role: {data.role}</Text><Text>Status: {data.status}</Text><HStack mt={5}><Button onClick={() => toast({ title: 'Password reset sent', status: 'success' })}>Reset Password</Button><Button onClick={() => toast({ title: 'Role assigned', status: 'success' })}>Assign Role</Button><Button colorScheme="red" onClick={() => toast({ title: 'User status changed', status: 'warning' })}>Suspend/Activate</Button></HStack></DashboardCard></PageShell>;
 }
 
-export function AdminCrudPage({ title, resource, fields, onView, columns: customColumns }) {
+/** Shared CRUD table + modal (no PageShell). Used by AdminCrudPage and embedded curriculum tabs. */
+export function AdminCrudBody({
+  title,
+  resource,
+  fields,
+  onView,
+  columns: customColumns,
+  entitySingular,
+  hideAddButton = false,
+  addButtonProps,
+  onActionsReady,
+  dataTableAppearance = 'default',
+}) {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload } = useLoad(() => adminApi.list(resource), [resource]);
   const [editing, setEditing] = useState(null);
   const autoColumns = [{ key: 'title', label: 'Title' }, { key: 'name', label: 'Name' }, { key: 'difficulty', label: 'Difficulty' }, { key: 'role', label: 'Role' }, { key: 'status', label: 'Status', badge: true }].filter((col) => (data || []).some((item) => item[col.key] !== undefined));
   const columns = customColumns || (autoColumns.length ? autoColumns : [{ key: 'id', label: 'ID' }]);
-  const save = async (values) => { editing ? await adminApi.update(resource, editing.id, values) : await adminApi.create(resource, values); toast({ title: `${title} saved`, status: 'success' }); setEditing(null); modal.onClose(); reload(); };
-  return <PageShell role="admin" title={title}><Button mb={4} onClick={() => { setEditing(null); modal.onOpen(); }}>Add {title.slice(0, -1)}</Button>{!data ? <LoadingState /> : <DataTable items={data} columns={columns} onView={onView} onEdit={(item) => { setEditing(item); modal.onOpen(); }} onDelete={async (item) => { await adminApi.remove(resource, item.id); toast({ title: 'Deleted', status: 'info' }); reload(); }} />}<FormModal isOpen={modal.isOpen} onClose={modal.onClose} title={`${editing ? 'Edit' : 'Add'} ${title}`} fields={fields} initialValues={editing || {}} onSubmit={save} /></PageShell>;
+  const addButtonLabel = entitySingular ?? title.slice(0, -1);
+  const formModalEntity = entitySingular ?? title;
+  const openAdd = useCallback(() => {
+    setEditing(null);
+    modal.onOpen();
+  }, [modal]);
+  useEffect(() => {
+    if (typeof onActionsReady !== 'function') return undefined;
+    onActionsReady({ openAdd });
+    return () => {
+      onActionsReady(null);
+    };
+  }, [onActionsReady, openAdd]);
+  const save = async (values) => {
+    editing ? await adminApi.update(resource, editing.id, values) : await adminApi.create(resource, values);
+    toast({ title: `${title} saved`, status: 'success' });
+    setEditing(null);
+    modal.onClose();
+    reload();
+  };
+  return (
+    <>
+      {!hideAddButton && (
+        <Button mb={4} onClick={openAdd} {...(addButtonProps || {})}>
+          Add {addButtonLabel}
+        </Button>
+      )}
+      {!data ? <LoadingState /> : (
+        <DataTable
+          items={data}
+          columns={columns}
+          appearance={dataTableAppearance}
+          onView={onView}
+          onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+          onDelete={async (item) => {
+            await adminApi.remove(resource, item.id);
+            toast({ title: 'Deleted', status: 'info' });
+            reload();
+          }}
+        />
+      )}
+      <FormModal
+        isOpen={modal.isOpen}
+        onClose={modal.onClose}
+        title={`${editing ? 'Edit' : 'Add'} ${formModalEntity}`}
+        fields={fields}
+        initialValues={editing || {}}
+        onSubmit={save}
+      />
+    </>
+  );
+}
+
+export function AdminCrudPage({ title, resource, fields, onView, columns: customColumns, entitySingular }) {
+  return (
+    <PageShell role="admin" title={title}>
+      <AdminCrudBody
+        title={title}
+        resource={resource}
+        fields={fields}
+        onView={onView}
+        columns={customColumns}
+        entitySingular={entitySingular}
+      />
+    </PageShell>
+  );
 }
 
 const PrincipleBadges = ({ principleIds, allPrinciples }) => {
@@ -598,59 +737,75 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
 
   return (
     <Box mt={3} pl={6} overflowX="auto">
-      <Table variant="simple" size="sm" bg="white" borderRadius="12px" border="1px solid" borderColor="gray.100" overflow="hidden">
-        <Thead bg="gray.50">
-          <Tr>
-            <Th py={3} fontSize="11px" fontWeight="700" color="brand.navy" letterSpacing="0.05em">MESSAGE / STORY TEXT</Th>
-            <Th py={3} fontSize="11px" fontWeight="700" color="brand.navy" letterSpacing="0.05em">PRINCIPLE</Th>
-            <Th py={3} fontSize="11px" fontWeight="700" color="brand.navy" letterSpacing="0.05em">ACTIONS</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {mappings.map(m => {
-            const principleName = 
-              m.principleName || 
-              m.principleLabel || 
-              principles.find( 
-                p => String(p.id).trim().toLowerCase() === String(m.principleId).trim().toLowerCase() 
-              )?.name || 
-              `Missing principle name (${m.principleId || 'no principleId'})`;
-            return (
-              <Tr key={m.id} _hover={{ bg: "gray.50" }}>
-                <Td py={4}>
-                  <Text fontSize="13px" color="gray.700" lineHeight="1.6" whiteSpace="normal">
-                    {m.storyText}
-                  </Text>
-                </Td>
-                <Td py={4}>
-                  <Text 
-                    fontSize="13px" 
-                    fontWeight="600" 
-                    color="brand.navy" 
-                    lineHeight="1.5" 
-                    whiteSpace="normal"
-                    title={m.principleId}
-                  >
-                    {principleName}
-                  </Text>
-                </Td>
-                <Td py={4} whiteSpace="nowrap">
-                  <Button 
-                    size="xs" 
-                    variant="outline" 
-                    borderColor="brand.goldDark" 
-                    color="brand.goldDark" 
-                    _hover={{ bg: "brand.goldDark", color: "white" }}
-                    onClick={() => handleEdit(m)}
-                  >
-                    Edit
-                  </Button>
-                </Td>
-              </Tr>
-            );
-          })}
-        </Tbody>
-      </Table>
+      <Box
+        borderRadius="14px"
+        border="1px solid"
+        borderColor="rgba(214,168,79,0.14)"
+        bg="white"
+        boxShadow="0 8px 28px rgba(7,17,31,0.055)"
+        overflow="hidden"
+      >
+        <Table variant="simple" size="sm">
+          <Thead bg="rgba(250, 247, 240, 0.95)">
+            <Tr>
+              <Th py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">MESSAGE / STORY TEXT</Th>
+              <Th py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">PRINCIPLE</Th>
+              <Th py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body" textAlign="right">ACTIONS</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {mappings.map(m => {
+              const principleName = 
+                m.principleName || 
+                m.principleLabel || 
+                principles.find( 
+                  p => String(p.id).trim().toLowerCase() === String(m.principleId).trim().toLowerCase() 
+                )?.name || 
+                `Missing principle name (${m.principleId || 'no principleId'})`;
+              return (
+                <Tr 
+                  key={m.id} 
+                  borderBottom="1px solid" 
+                  borderColor="rgba(7,17,31,0.06)"
+                  _hover={{ bg: 'rgba(214,168,79,0.07)', transition: 'background 0.18s ease' }}
+                >
+                  <Td py={4} verticalAlign="middle">
+                    <Text fontSize="13px" color="gray.600" lineHeight="1.6" whiteSpace="normal">
+                      {m.storyText}
+                    </Text>
+                  </Td>
+                  <Td py={4} verticalAlign="middle">
+                    <Text 
+                      fontSize="13px" 
+                      fontWeight="700" 
+                      color="brand.navy" 
+                      lineHeight="1.5" 
+                      whiteSpace="normal"
+                      title={m.principleId}
+                    >
+                      {principleName}
+                    </Text>
+                  </Td>
+                  <Td py={4} whiteSpace="nowrap" textAlign="right" verticalAlign="middle">
+                    <Button 
+                      size="xs" 
+                      variant="ghost" 
+                      color="brand.navy"
+                      fontWeight="600"
+                      borderRadius="full"
+                      px={3}
+                      _hover={{ bg: 'rgba(7,17,31,0.08)' }}
+                      onClick={() => handleEdit(m)}
+                    >
+                      Edit
+                    </Button>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </Tbody>
+        </Table>
+      </Box>
       <FormModal
         isOpen={modal.isOpen}
         onClose={modal.onClose}
@@ -708,7 +863,7 @@ const NestedStoriesView = ({ search, principles = [] }) => {
   return (
     <VStack align="stretch" spacing={8}>
       {filteredModules.map(module => (
-        <Box key={module.id} p={6} bg="#FFFDF8" borderRadius="18px" border="1px solid rgba(214,168,79,0.25)" boxShadow="sm">
+        <Box key={module.id} p={6} bg="brand.card" borderRadius="18px" border="1px solid" borderColor="rgba(214,168,79,0.14)" boxShadow="0 10px 32px rgba(7,17,31,0.06)">
           <Flex justify="space-between" align="start" mb={6}>
             <Box>
               <Heading size="lg" color="brand.navy" fontFamily="serif">{module.name}</Heading>
@@ -726,7 +881,7 @@ const NestedStoriesView = ({ search, principles = [] }) => {
               <Text color="brand.muted" fontStyle="italic" pl={4}>No chapters in this module.</Text>
             ) : (
               module.chapters.map(chapter => (
-                <Box key={chapter.id} p={5} bg="rgba(251, 241, 213, 0.2)" borderRadius="14px" borderLeft="4px solid" borderLeftColor="brand.gold">
+                <Box key={chapter.id} p={5} bg="rgba(250, 247, 240, 0.65)" borderRadius="14px" border="1px solid" borderColor="rgba(214,168,79,0.12)" borderLeftWidth="4px" borderLeftColor="brand.gold">
                   <Flex justify="space-between" align="center" mb={4}>
                     <Heading size="md" color="brand.navy" fontFamily="serif">{chapter.name}</Heading>
                     <Badge variant="outline" colorScheme="brand" borderRadius="full" px={3}>{chapter.stories.length} Stories</Badge>
@@ -737,7 +892,7 @@ const NestedStoriesView = ({ search, principles = [] }) => {
                       <Text color="brand.muted" fontStyle="italic" fontSize="sm" pl={6}>No stories in this chapter.</Text>
                     ) : (
                       chapter.stories.map(story => (
-                        <Box key={story.id} p={4} bg="white" borderRadius="10px" border="1px solid" borderColor="gray.100" boxShadow="xs">
+                        <Box key={story.id} p={4} bg="white" borderRadius="12px" border="1px solid" borderColor="rgba(214,168,79,0.12)" boxShadow="0 4px 16px rgba(7,17,31,0.04)">
                           <Flex justify="space-between" align="start">
                             <Box flex="1">
                               <HStack mb={1}>
@@ -777,11 +932,31 @@ const NestedStoriesView = ({ search, principles = [] }) => {
 const EMPTY_FIELDS = [];
 const EMPTY_OBJECT = {};
 
+/** Normalize a players_activity row for the sync history table (flat columns or legacy `data` JSON). */
+function formatActivityHistoryRow(row) {
+  if (row?.data != null) {
+    const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+    return {
+      totalGames: data?.total_games ?? 0,
+      blitzRating: data?.types?.Blitz?.last_rating ?? '-',
+      rapidRating: data?.types?.Rapid?.last_rating ?? '-',
+    };
+  }
+  const blitz = row?.blitz_rating;
+  const rapid = row?.rapid_rating;
+  return {
+    totalGames: row?.total_games ?? 0,
+    blitzRating: Array.isArray(blitz) && blitz.length ? blitz[blitz.length - 1] : '-',
+    rapidRating: Array.isArray(rapid) && rapid.length ? rapid[rapid.length - 1] : '-',
+  };
+}
+
 export function AdminGamesDetails() {
   const toast = useToast();
   const { data: players, reload, loading } = useLoad(() => adminApi.players(), []);
   const [syncing, setSyncing] = useState(false);
   const [syncingActivity, setSyncingActivity] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -890,14 +1065,40 @@ export function AdminGamesDetails() {
     }
   };
 
-  const handleViewHistory = async (player) => {
+  const handleOpenOverallHistory = async () => {
+    const list = players || [];
+    if (!list.length) {
+      toast({ title: 'No players to load history for', status: 'info' });
+      return;
+    }
+    setHistoryLoading(true);
     try {
-      const activity = await chessComApi.getPlayerActivity(player.Chess_com_ID);
-      setHistoryData(activity.activityRows || []);
-      setSelectedPlayer(player);
+      const perPlayer = await Promise.all(
+        list.map(async (p) => {
+          try {
+            const activity = await chessComApi.getPlayerActivity(p.Chess_com_ID);
+            const rows = activity.activityRows || [];
+            return rows.map((row) => ({
+              ...row,
+              Player_Name: p.Player_Name,
+              Chess_com_ID: p.Chess_com_ID,
+            }));
+          } catch {
+            return [];
+          }
+        }),
+      );
+      const merged = perPlayer.flat().sort((a, b) => {
+        const da = new Date(a.date).getTime();
+        const db = new Date(b.date).getTime();
+        return (Number.isNaN(db) ? 0 : db) - (Number.isNaN(da) ? 0 : da);
+      });
+      setHistoryData(merged);
       historyModal.onOpen();
     } catch (err) {
       toast({ title: 'Failed to load history', description: err.message, status: 'error' });
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -907,47 +1108,77 @@ export function AdminGamesDetails() {
   );
 
   return (
-    <PageShell role="admin" title="Games Details">
+    <PageShell role="admin" title="Player Details" dashboardHeading>
       <VStack align="stretch" spacing={6}>
-        <Flex justify="space-between" align="center" bg="white" p={4} borderRadius="16px" border="1px solid" borderColor="rgba(214,168,79,0.15)" shadow="sm">
-          <Box flex="1" maxW="400px">
-            <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
-          </Box>
-          <HStack spacing={3}>
-            <Button 
-              leftIcon={<Spinner size="xs" display={syncingActivity ? 'block' : 'none'} />}
-              onClick={handleSyncActivity} 
-              isLoading={syncingActivity}
-              loadingText="Syncing..."
-              variant="outline"
-              borderColor="brand.navy"
-              color="brand.navy"
-              _hover={{ bg: 'brand.navy', color: 'white' }}
-              borderRadius="full"
-              px={6}
-            >
-              Sync Activity
-            </Button>
-            <Button 
-              leftIcon={<Spinner size="xs" display={syncing ? 'block' : 'none'} />}
-              onClick={handleSync} 
-              isLoading={syncing}
-              loadingText="Syncing..."
-              bg="brand.navy"
-              color="white"
-              _hover={{ bg: 'brand.goldDark' }}
-              borderRadius="full"
-              px={6}
-            >
-              Sync Profiles
-            </Button>
-          </HStack>
-        </Flex>
+        <Box
+          bg="brand.card"
+          border="1px solid"
+          borderColor="rgba(169,119,33,0.16)"
+          borderRadius="18px"
+          boxShadow="0 12px 30px rgba(17,24,39,0.055)"
+          p={{ base: 4, md: 5 }}
+        >
+          <Flex
+            direction={{ base: 'column', lg: 'row' }}
+            gap={{ base: 4, lg: 6 }}
+            align={{ base: 'stretch', lg: 'center' }}
+            justify="space-between"
+          >
+            <Box flex="1" minW={0} maxW={{ base: '100%', lg: '440px' }}>
+              <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
+            </Box>
+            <HStack spacing={3} flexWrap="wrap" justify={{ base: 'flex-start', lg: 'flex-end' }}>
+              <Button
+                variant="outline"
+                bg="rgba(255,253,248,0.95)"
+                borderColor="rgba(169,119,33,0.22)"
+                color="brand.navy"
+                _hover={{ bg: 'brand.navy', color: 'white', borderColor: 'brand.navy' }}
+                borderRadius="full"
+                px={6}
+                onClick={handleOpenOverallHistory}
+                isLoading={historyLoading}
+                loadingText="Loading…"
+              >
+                History
+              </Button>
+              <Button
+                leftIcon={<Spinner size="xs" display={syncingActivity ? 'block' : 'none'} />}
+                onClick={handleSyncActivity}
+                isLoading={syncingActivity}
+                loadingText="Syncing..."
+                variant="outline"
+                bg="rgba(255,253,248,0.95)"
+                borderColor="rgba(169,119,33,0.22)"
+                color="brand.navy"
+                _hover={{ bg: 'brand.navy', color: 'white', borderColor: 'brand.navy' }}
+                borderRadius="full"
+                px={6}
+              >
+                Sync Activity
+              </Button>
+              <Button
+                leftIcon={<Spinner size="xs" display={syncing ? 'block' : 'none'} />}
+                onClick={handleSync}
+                isLoading={syncing}
+                loadingText="Syncing..."
+                bg="brand.navy"
+                color="white"
+                _hover={{ bg: 'brand.goldDark', color: 'white' }}
+                borderRadius="full"
+                px={6}
+              >
+                Sync Profiles
+              </Button>
+            </HStack>
+          </Flex>
+        </Box>
 
         {loading ? (
           <LoadingState />
         ) : (
           <DataTable
+            appearance="dashboard"
             items={filteredPlayers}
             onView={openPlayerDetails}
             onEdit={handleEditPlayer}
@@ -963,11 +1194,6 @@ export function AdminGamesDetails() {
                   return tracker?.is_paused ? 'green' : 'orange';
                 },
                 onClick: handleTogglePause
-              },
-              {
-                label: 'History',
-                colorScheme: 'purple',
-                onClick: handleViewHistory
               }
             ]}
             columns={[
@@ -980,7 +1206,19 @@ export function AdminGamesDetails() {
                   return (
                     <HStack>
                       <Text fontWeight="bold" color="brand.navy">{val}</Text>
-                      {tracker?.is_paused && <Badge colorScheme="orange" fontSize="8px">PAUSED</Badge>}
+                      {tracker?.is_paused && (
+                        <Badge
+                          bg="rgba(214,168,79,0.22)"
+                          color="brand.goldDark"
+                          fontSize="9px"
+                          fontWeight="800"
+                          borderRadius="md"
+                          px={1.5}
+                          textTransform="uppercase"
+                        >
+                          Paused
+                        </Badge>
+                      )}
                     </HStack>
                   );
                 }
@@ -990,10 +1228,10 @@ export function AdminGamesDetails() {
                 key: 'ratings', 
                 label: 'RATINGS (R/B/U)', 
                 render: (_, row) => (
-                  <HStack spacing={1}>
-                    <Badge bg="#EBF8FF" color="#2B6CB0" borderRadius="full" px={2} title="Rapid">{row.rapid_rating || '-'}</Badge>
-                    <Badge bg="#FFF5F5" color="#C53030" borderRadius="full" px={2} title="Blitz">{row.blitz_rating || '-'}</Badge>
-                    <Badge bg="#FAF5FF" color="#6B46C1" borderRadius="full" px={2} title="Bullet">{row.bullet_rating || '-'}</Badge>
+                  <HStack spacing={1} flexWrap="wrap">
+                    <Badge bg="rgba(7,17,31,0.06)" color="brand.navy" borderRadius="full" px={2} fontWeight="700" fontSize="11px" title="Rapid">{row.rapid_rating || '-'}</Badge>
+                    <Badge bg="rgba(7,17,31,0.09)" color="brand.navy" borderRadius="full" px={2} fontWeight="700" fontSize="11px" title="Blitz">{row.blitz_rating || '-'}</Badge>
+                    <Badge bg="rgba(169,119,33,0.14)" color="brand.goldDark" borderRadius="full" px={2} fontWeight="700" fontSize="11px" title="Bullet">{row.bullet_rating || '-'}</Badge>
                   </HStack>
                 )
               },
@@ -1001,15 +1239,15 @@ export function AdminGamesDetails() {
                 key: 'best', 
                 label: 'BEST (R/B/U)', 
                 render: (_, row) => (
-                  <HStack spacing={1}>
-                    <Badge variant="outline" colorScheme="blue" borderRadius="full" px={2} fontSize="10px" title="Best Rapid">{row.rapid_best || '-'}</Badge>
-                    <Badge variant="outline" colorScheme="red" borderRadius="full" px={2} fontSize="10px" title="Best Blitz">{row.blitz_best || '-'}</Badge>
-                    <Badge variant="outline" colorScheme="purple" borderRadius="full" px={2} fontSize="10px" title="Best Bullet">{row.bullet_best || '-'}</Badge>
+                  <HStack spacing={1} flexWrap="wrap">
+                    <Badge variant="outline" borderColor="rgba(169,119,33,0.35)" color="brand.navy" bg="rgba(255,253,248,0.8)" borderRadius="full" px={2} fontSize="10px" title="Best Rapid">{row.rapid_best || '-'}</Badge>
+                    <Badge variant="outline" borderColor="rgba(169,119,33,0.35)" color="brand.navy" bg="rgba(255,253,248,0.8)" borderRadius="full" px={2} fontSize="10px" title="Best Blitz">{row.blitz_best || '-'}</Badge>
+                    <Badge variant="outline" borderColor="rgba(169,119,33,0.35)" color="brand.navy" bg="rgba(255,253,248,0.8)" borderRadius="full" px={2} fontSize="10px" title="Best Bullet">{row.bullet_best || '-'}</Badge>
                   </HStack>
                 )
               },
-              { key: 'current_elo', label: 'MAX ELO', render: (val) => <Badge bg="rgba(214,168,79,0.15)" color="brand.goldDark" borderRadius="full" px={3} variant="solid">{val || '-'}</Badge> },
-              { key: 'Joining_Date', label: 'JOINED', render: (val) => val ? <Text fontSize="13px" color="gray.600">{new Date(val).toLocaleDateString()}</Text> : 'N/A' },
+              { key: 'current_elo', label: 'MAX ELO', render: (val) => <Badge bg="rgba(214,168,79,0.2)" color="brand.navy" borderRadius="full" px={3} fontWeight="700">{val || '-'}</Badge> },
+              { key: 'Joining_Date', label: 'JOINED', render: (val) => val ? <Text fontSize="13px" color="brand.muted">{new Date(val).toLocaleDateString()}</Text> : 'N/A' },
               { 
                 key: 'chess_last_synced_at', 
                 label: 'SYNC STATUS', 
@@ -1019,19 +1257,35 @@ export function AdminGamesDetails() {
                   const locked = dates.filter(d => activity[d]?.lock);
                   const errors = dates.filter(d => activity[d]?.error);
 
-                  if (!val && dates.length === 0) return <Badge variant="subtle" colorScheme="gray" borderRadius="full" px={3}>NOT SYNCED</Badge>;
+                  if (!val && dates.length === 0) {
+                    return (
+                      <Badge variant="outline" borderColor="rgba(107,114,128,0.35)" color="brand.muted" borderRadius="full" px={3} fontSize="10px" fontWeight="700">
+                        Not synced
+                      </Badge>
+                    );
+                  }
 
                   return (
                     <VStack align="start" spacing={1}>
-                      <HStack spacing={1}>
-                        {locked.length > 0 && <Badge bg="#C6F6D5" color="#22543D" borderRadius="full" fontSize="10px" px={2}>{locked.length}d</Badge>}
-                        {errors.length > 0 && <Badge bg="#FED7D7" color="#822727" borderRadius="full" fontSize="10px" px={2} title={activity[errors[0]].error}>ERR</Badge>}
+                      <HStack spacing={1} flexWrap="wrap">
+                        {locked.length > 0 && (
+                          <Badge bg="rgba(47,158,68,0.12)" color="brand.success" borderRadius="full" fontSize="10px" px={2} fontWeight="700">
+                            {locked.length}d
+                          </Badge>
+                        )}
+                        {errors.length > 0 && (
+                          <Badge bg="rgba(214,69,69,0.12)" color="brand.danger" borderRadius="full" fontSize="10px" px={2} fontWeight="700" title={activity[errors[0]].error}>
+                            Err
+                          </Badge>
+                        )}
                         {dates.length > (locked.length + errors.length) && (
-                          <Badge bg="#FEEBC8" color="#744210" borderRadius="full" fontSize="10px" px={2}>+{dates.length - locked.length - errors.length}p</Badge>
+                          <Badge bg="rgba(169,119,33,0.14)" color="brand.goldDark" borderRadius="full" fontSize="10px" px={2} fontWeight="700">
+                            +{dates.length - locked.length - errors.length}p
+                          </Badge>
                         )}
                       </HStack>
                       {val && (
-                        <Text fontSize="10px" fontWeight="600" color="gray.400" whiteSpace="nowrap">
+                        <Text fontSize="10px" fontWeight="600" color="brand.muted" whiteSpace="nowrap">
                           {new Date(val).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                       )}
@@ -1061,31 +1315,35 @@ export function AdminGamesDetails() {
       <FormModal
         isOpen={historyModal.isOpen}
         onClose={historyModal.onClose}
-        title={`Sync History: ${selectedPlayer?.Player_Name || ''}`}
+        title="Sync History: All players"
         fields={[]}
         onSubmit={historyModal.onClose}
       >
         <Box maxH="400px" overflowY="auto">
           {historyData.length === 0 ? (
-            <Text py={10} textAlign="center" color="gray.500">No history found for this player.</Text>
+            <Text py={10} textAlign="center" color="brand.muted">No activity history found for any player.</Text>
           ) : (
             <Table size="sm" variant="simple">
-              <Thead bg="gray.50">
+              <Thead bg="rgba(7,17,31,0.045)">
                 <Tr>
-                  <Th>Date</Th>
-                  <Th>Games</Th>
-                  <Th>Ratings (B/R)</Th>
+                  <Th fontSize="10px" fontWeight="800" color="brand.navy" textTransform="uppercase" letterSpacing="0.04em">Player</Th>
+                  <Th fontSize="10px" fontWeight="800" color="brand.navy" textTransform="uppercase" letterSpacing="0.04em">Chess.com ID</Th>
+                  <Th fontSize="10px" fontWeight="800" color="brand.navy" textTransform="uppercase" letterSpacing="0.04em">Date</Th>
+                  <Th fontSize="10px" fontWeight="800" color="brand.navy" textTransform="uppercase" letterSpacing="0.04em">Games</Th>
+                  <Th fontSize="10px" fontWeight="800" color="brand.navy" textTransform="uppercase" letterSpacing="0.04em">Ratings (B/R)</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {historyData.map((row, i) => {
-                  const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+                  const cells = formatActivityHistoryRow(row);
                   return (
-                    <Tr key={i}>
-                      <Td fontSize="xs">{new Date(row.date).toLocaleDateString()}</Td>
-                      <Td fontSize="xs">{data?.total_games || 0}</Td>
+                    <Tr key={`${row.Chess_com_ID || 'row'}-${row.date || i}-${i}`}>
+                      <Td fontSize="xs">{row.Player_Name || '—'}</Td>
+                      <Td fontSize="xs">{row.Chess_com_ID || '—'}</Td>
+                      <Td fontSize="xs">{row.date ? new Date(row.date).toLocaleDateString() : '—'}</Td>
+                      <Td fontSize="xs">{cells.totalGames}</Td>
                       <Td fontSize="xs">
-                        {data?.types?.Blitz?.last_rating || '-'} / {data?.types?.Rapid?.last_rating || '-'}
+                        {cells.blitzRating} / {cells.rapidRating}
                       </Td>
                     </Tr>
                   );
@@ -1197,16 +1455,68 @@ export function AdminGamesDetails() {
   );
 }
 
+/** Sort curriculum modules by `module_id` (pure integer strings compare numerically). */
+function compareModulesByModuleId(a, b) {
+  const sa = String(a?.module_id ?? '').trim();
+  const sb = String(b?.module_id ?? '').trim();
+  const numA = Number(sa);
+  const numB = Number(sb);
+  if (/^-?\d+$/.test(sa) && /^-?\d+$/.test(sb)) return numA - numB;
+  return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+const CURRICULUM_TAB_SLUGS = ['modules', 'chapters', 'stories', 'principles'];
+
+function parseCurriculumTab(tabParam) {
+  if (tabParam == null || tabParam === '') return 0;
+  const raw = String(tabParam).trim();
+  const lower = raw.toLowerCase();
+  const byName = CURRICULUM_TAB_SLUGS.indexOf(lower);
+  if (byName !== -1) return byName;
+  const n = parseInt(raw, 10);
+  if (!Number.isNaN(n) && n >= 0 && n < CURRICULUM_TAB_SLUGS.length) return n;
+  return 0;
+}
+
+/** Positions API (`resource="positions"`) — Principles UI in admin curriculum tab. */
+const ADMIN_POSITIONS_TAB_CRUD = {
+  title: 'Principles',
+  resource: 'positions',
+  entitySingular: 'Principle',
+  columns: [
+    { key: 'id', label: 'ID', bold: true },
+    { key: 'principle', label: 'PRINCIPLE' },
+    { key: 'isdone', label: 'STATUS', badge: true },
+  ],
+  fields: [
+    { name: 'id', label: 'ID', required: true },
+    { name: 'principle', label: 'Principle' },
+    { name: 'fen_with_move', label: 'FEN with Move' },
+    { name: 'puzzle_list', label: 'Puzzle List (JSON)' },
+    { name: 'isdone', label: 'Done', type: 'checkbox' },
+  ],
+};
+
 export function AdminCurriculum() {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload, loading } = useLoad(() => adminApi.curriculum(), []);
   
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = parseInt(searchParams.get('tab') || '0');
+  const tabParam = searchParams.get('tab');
+  const activeTab = useMemo(() => parseCurriculumTab(tabParam), [tabParam]);
   const setActiveTab = (index) => {
-    setSearchParams({ tab: index.toString() });
+    setSearchParams({ tab: CURRICULUM_TAB_SLUGS[index] });
   };
+
+  const principlesCrudActionsRef = useRef(null);
+  const registerPrinciplesActions = useCallback((api) => {
+    principlesCrudActionsRef.current = api;
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 3) modal.onClose();
+  }, [activeTab, modal.onClose]);
 
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
@@ -1217,8 +1527,10 @@ export function AdminCurriculum() {
         editing ? await adminApi.updateModule(editing.module_id, values) : await adminApi.createModule(values);
       } else if (activeTab === 1) {
         editing ? await adminApi.updateChapter(editing.chapter_id, values) : await adminApi.createChapter(values);
-      } else {
+      } else if (activeTab === 2) {
         editing ? await adminApi.updateStory(editing.story_id, values) : await adminApi.createStory(values);
+      } else {
+        return;
       }
       toast({ title: 'Saved successfully', status: 'success' });
       modal.onClose();
@@ -1232,7 +1544,8 @@ export function AdminCurriculum() {
     try {
       if (activeTab === 0) await adminApi.deleteModule(item.module_id);
       else if (activeTab === 1) await adminApi.deleteChapter(item.chapter_id);
-      else await adminApi.deleteStory(item.story_id);
+      else if (activeTab === 2) await adminApi.deleteStory(item.story_id);
+      else return;
       toast({ title: 'Deleted successfully', status: 'success' });
       reload();
     } catch (err) {
@@ -1243,7 +1556,7 @@ export function AdminCurriculum() {
   const fields = useMemo(() => {
     return (currentValues) => {
       if (!data) return [];
-      return [
+      const fieldSets = [
         [
           { name: 'title', label: 'Module Title', required: true },
         ],
@@ -1265,12 +1578,18 @@ export function AdminCurriculum() {
           { name: 'description', label: 'Short Description', type: 'textarea' },
           { name: 'status', label: 'Status', options: ['published', 'draft'] },
           { name: 'tags', label: 'Tags (comma separated)' },
-        ]
-      ][activeTab];
+        ],
+      ];
+      return fieldSets[activeTab] ?? [];
     };
   }, [data, activeTab]);
 
-  const filteredModules = (data?.modules || []).filter(m => m.title.toLowerCase().includes(search.toLowerCase()));
+  const filteredModules = useMemo(() => {
+    const list = data?.modules || [];
+    const needle = search.toLowerCase();
+    const filtered = list.filter((m) => m.title.toLowerCase().includes(needle));
+    return [...filtered].sort(compareModulesByModuleId);
+  }, [data, search]);
   const filteredChapters = (data?.chapters || []).filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -1284,35 +1603,87 @@ export function AdminCurriculum() {
             position="sticky" 
             top="-28px" 
             zIndex="20" 
-            bg="#FAF7F0" 
-            pt="4"
-            pb="4" 
-            borderBottom="1px solid rgba(214,168,79,0.2)"
-            boxShadow="0 8px 24px rgba(10, 20, 40, 0.04)"
+            bg="brand.cream" 
+            pt={4}
+            pb={4} 
+            borderBottom="1px solid"
+            borderColor="rgba(214,168,79,0.18)"
+            boxShadow="0 4px 18px rgba(7, 17, 31, 0.04)"
           >
             <VStack align="stretch" spacing={4}>
-              <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />
+              {activeTab !== 3 && <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />}
               
-              <Flex justify="space-between" align="center">
-                <Tabs index={activeTab} onChange={setActiveTab} variant="enclosed" mb="-1px">
-                  <TabList borderBottom="none">
-                    <Tab _selected={{ color: 'brand.goldDark', borderColor: 'rgba(214,168,79,0.2)', borderBottomColor: '#FAF7F0' }}>Modules</Tab>
-                    <Tab _selected={{ color: 'brand.goldDark', borderColor: 'rgba(214,168,79,0.2)', borderBottomColor: '#FAF7F0' }}>Chapters</Tab>
-                    <Tab _selected={{ color: 'brand.goldDark', borderColor: 'rgba(214,168,79,0.2)', borderBottomColor: '#FAF7F0' }}>Stories</Tab>
-                  </TabList>
-                </Tabs>
-
-                <Button 
-                  bg="brand.navy" 
-                  color="white" 
-                  _hover={{ bg: 'brand.goldDark' }} 
-                  onClick={() => { setEditing(null); modal.onOpen(); }}
-                  size="md"
-                  px={8}
+              <Box
+                bg="white"
+                borderRadius="16px"
+                border="1px solid"
+                borderColor="rgba(214,168,79,0.16)"
+                boxShadow="0 10px 32px rgba(7, 17, 31, 0.06)"
+                px={{ base: 3, md: 5 }}
+                py={{ base: 3, md: 4 }}
+              >
+                <Flex
+                  flexWrap="wrap"
+                  gap={{ base: 3, md: 4 }}
+                  align="center"
+                  justify="space-between"
+                  rowGap={4}
                 >
-                  Add {['Module', 'Chapter', 'Story'][activeTab]}
-                </Button>
-              </Flex>
+                  <Box flex="1" minW={{ base: '100%', md: '200px' }}>
+                    <Tabs index={activeTab} onChange={setActiveTab} variant="unstyled">
+                      <TabList flexWrap="wrap" gap={1} rowGap={1} border="none" bg="transparent">
+                        {['Modules', 'Chapters', 'Stories', 'Principles'].map((label) => (
+                          <Tab
+                            key={label}
+                            px={{ base: 3, md: 4 }}
+                            py={2.5}
+                            borderRadius="10px"
+                            fontWeight={600}
+                            fontSize="sm"
+                            color="brand.navy"
+                            opacity={0.72}
+                            transition="background 0.15s ease, color 0.15s ease, opacity 0.15s ease"
+                            _hover={{
+                              opacity: 1,
+                              bg: 'rgba(7,17,31,0.05)',
+                            }}
+                            _selected={{
+                              opacity: 1,
+                              color: 'brand.goldDark',
+                              bg: 'rgba(214,168,79,0.14)',
+                              boxShadow: 'inset 0 0 0 1px rgba(214,168,79,0.38)',
+                            }}
+                          >
+                            {label}
+                          </Tab>
+                        ))}
+                      </TabList>
+                    </Tabs>
+                  </Box>
+
+                  <Button 
+                    bg="brand.navy" 
+                    color="white" 
+                    fontWeight={700}
+                    borderRadius="12px"
+                    _hover={{ bg: '#122536' }} 
+                    _active={{ bg: '#050d18' }}
+                    onClick={() => {
+                      if (activeTab === 3) {
+                        principlesCrudActionsRef.current?.openAdd();
+                      } else {
+                        setEditing(null);
+                        modal.onOpen();
+                      }
+                    }}
+                    size="md"
+                    px={8}
+                    flexShrink={0}
+                  >
+                    {activeTab === 3 ? 'Add Principle' : `Add ${['Module', 'Chapter', 'Story'][activeTab]}`}
+                  </Button>
+                </Flex>
+              </Box>
             </VStack>
           </Box>
 
@@ -1326,6 +1697,7 @@ export function AdminCurriculum() {
               {activeTab === 0 && (
                 <DataTable
                   items={filteredModules}
+                  appearance="curriculum"
                   columns={[
                     { key: 'title', label: 'MODULE', bold: true },
                     { key: 'chaptersCount', label: 'CHAPTERS' },
@@ -1340,7 +1712,7 @@ export function AdminCurriculum() {
                   {filteredModules.map(module => {
                     const moduleChapters = filteredChapters.filter(c => c.module_id === module.module_id);
                     return (
-                      <Box key={module.module_id} mb={8} p={5} bg="#FFFDF8" borderRadius="14px" border="1px solid rgba(214,168,79,0.25)">
+                      <Box key={module.module_id} mb={8} p={5} bg="brand.card" borderRadius="14px" border="1px solid" borderColor="rgba(214,168,79,0.14)" boxShadow="0 8px 28px rgba(7,17,31,0.055)">
                         <Flex justify="space-between" align="center" mb={4}>
                           <Box>
                             <Heading size="md" color="brand.navy">{module.title}</Heading>
@@ -1351,6 +1723,7 @@ export function AdminCurriculum() {
                         </Flex>
                         {moduleChapters.length > 0 ? (
                           <DataTable
+                            appearance="curriculum"
                             items={moduleChapters}
                             columns={[
                               { key: 'title', label: 'CHAPTER', bold: true },
@@ -1371,18 +1744,29 @@ export function AdminCurriculum() {
               {activeTab === 2 && (
                 <NestedStoriesView search={search} principles={data?.principles} />
               )}
+
+              {activeTab === 3 && (
+                <AdminCrudBody
+                  {...ADMIN_POSITIONS_TAB_CRUD}
+                  hideAddButton
+                  onActionsReady={registerPrinciplesActions}
+                  dataTableAppearance="curriculum"
+                />
+              )}
             </Box>
           </Box>
         </VStack>
       )}
-      <FormModal
-        isOpen={modal.isOpen}
-        onClose={modal.onClose}
-        title={`${editing ? 'Edit' : 'Add'} ${['Module', 'Chapter', 'Story'][activeTab]}`}
-        fields={fields}
-        initialValues={editing || EMPTY_OBJECT}
-        onSubmit={handleSave}
-      />
+      {activeTab < 3 && (
+        <FormModal
+          isOpen={modal.isOpen}
+          onClose={modal.onClose}
+          title={`${editing ? 'Edit' : 'Add'} ${['Module', 'Chapter', 'Story'][activeTab]}`}
+          fields={fields}
+          initialValues={editing || EMPTY_OBJECT}
+          onSubmit={handleSave}
+        />
+      )}
     </PageShell>
   );
 }
@@ -1438,22 +1822,9 @@ export function AdminPuzzles() {
 
 export function AdminPositions() {
   return (
-    <AdminCrudPage 
-      title="Positions" 
-      resource="positions" 
-      columns={[
-        { key: 'id', label: 'ID', bold: true },
-        { key: 'principle', label: 'PRINCIPLE' },
-        { key: 'isdone', label: 'STATUS', badge: true },
-      ]}
-      fields={[
-        { name: 'id', label: 'ID', required: true }, 
-        { name: 'principle', label: 'Principle' }, 
-        { name: 'fen_with_move', label: 'FEN with Move' }, 
-        { name: 'puzzle_list', label: 'Puzzle List (JSON)' },
-        { name: 'isdone', label: 'Done', type: 'checkbox' }
-      ]} 
-    />
+    <PageShell role="admin" title="Principles">
+      <AdminCrudBody {...ADMIN_POSITIONS_TAB_CRUD} />
+    </PageShell>
   );
 }
 export function AdminPrinciples() {
