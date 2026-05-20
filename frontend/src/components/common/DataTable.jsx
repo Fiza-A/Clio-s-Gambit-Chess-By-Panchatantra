@@ -3,6 +3,7 @@ import { Button, Table, Tbody, Td, Th, Thead, Tr, Box, Text, HStack } from '@cha
 
 /**
  * @param {'default' | 'dashboard' | 'curriculum'} appearance — 'curriculum' matches admin Curriculum tabs (cream thead, navy actions).
+ * @param {boolean} nested — when true, outer card chrome is omitted (parent supplies the card shell).
  */
 export default function DataTable({
   items = [],
@@ -13,6 +14,7 @@ export default function DataTable({
   rowKey,
   extraActions = [],
   appearance = 'default',
+  nested = false,
 }) {
   const isDashboard = appearance === 'dashboard';
   const isCurriculum = appearance === 'curriculum';
@@ -26,42 +28,53 @@ export default function DataTable({
     return item.id || item._id || item.Chess_com_ID || item.mapping_id || item.chapter_id || item.module_id || item.title || item.name || index;
   };
 
-  const wrapProps = isDashboard
-    ? {
-        overflowX: 'auto',
-        borderRadius: '18px',
-        border: '1px solid',
-        borderColor: 'rgba(169,119,33,0.16)',
-        bg: 'brand.card',
-        boxShadow: '0 12px 30px rgba(17,24,39,0.055)',
-      }
-    : isCurriculum
+  const wrapProps = nested
+    ? { overflowX: 'auto', w: '100%' }
+    : isDashboard
       ? {
           overflowX: 'auto',
-          borderRadius: '14px',
+          borderRadius: '16px',
           border: '1px solid',
           borderColor: 'rgba(214,168,79,0.14)',
           bg: 'white',
           boxShadow: '0 8px 28px rgba(7,17,31,0.055)',
         }
-      : {
-          overflowX: 'auto',
-          borderRadius: '16px',
-          border: '1px solid',
-          borderColor: 'rgba(214,168,79,0.15)',
-          bg: 'white',
-          shadow: '0 4px 20px rgba(0,0,0,0.03)',
-        };
+      : isCurriculum
+        ? {
+            overflowX: 'auto',
+            borderRadius: '14px',
+            border: '1px solid',
+            borderColor: 'rgba(214,168,79,0.14)',
+            bg: 'white',
+            boxShadow: '0 8px 28px rgba(7,17,31,0.055)',
+          }
+        : {
+            overflowX: 'auto',
+            borderRadius: '16px',
+            border: '1px solid',
+            borderColor: 'rgba(214,168,79,0.15)',
+            bg: 'white',
+            shadow: '0 4px 20px rgba(0,0,0,0.03)',
+          };
 
-  const theadBg = isDashboard
-    ? 'rgba(7,17,31,0.045)'
-    : isCurriculum
-      ? 'rgba(250, 247, 240, 0.95)'
-      : '#F9FAFB';
+  const theadBg = isDashboard || isCurriculum
+    ? 'rgba(250, 247, 240, 0.95)'
+    : '#F9FAFB';
   const rowHoverBg = isDashboard || isCurriculum ? 'rgba(214,168,79,0.07)' : 'rgba(214,168,79,0.04)';
-  const rowBorderColor = isCurriculum ? 'rgba(7,17,31,0.06)' : isDashboard ? 'rgba(169,119,33,0.12)' : 'gray.50';
+  const rowBorderColor = isCurriculum || isDashboard ? 'rgba(7,17,31,0.06)' : 'gray.50';
   const tdPy = isDashboard || isCurriculum ? 4 : 3;
-  const thFontFamily = isCurriculum ? 'body' : 'serif';
+  const thFontFamily = isDashboard || isCurriculum ? 'body' : 'serif';
+  const thLetterSpacing = isDashboard || isCurriculum ? '0.07em' : '0.05em';
+  const navyLinkHover = { bg: 'rgba(7,17,31,0.06)', textDecoration: 'underline', textUnderlineOffset: '2px' };
+  const editHover = isCurriculum || isDashboard
+    ? navyLinkHover
+    : { bg: 'brand.50' };
+  const viewHover = isCurriculum || isDashboard
+    ? navyLinkHover
+    : { bg: 'blue.50' };
+  const deleteHover = isCurriculum || isDashboard
+    ? { bg: 'rgba(214,69,69,0.1)', textDecoration: 'underline', textUnderlineOffset: '2px' }
+    : { bg: 'rgba(214, 69, 69, 0.1)' };
 
   const actionLabel = (action, item) => (typeof action.label === 'function' ? action.label(item) : action.label);
 
@@ -77,14 +90,14 @@ export default function DataTable({
                 fontSize="11px" 
                 color="brand.navy" 
                 fontWeight="800" 
-                letterSpacing={isCurriculum ? '0.07em' : '0.05em'}
+                letterSpacing={thLetterSpacing}
                 textTransform="uppercase"
                 fontFamily={thFontFamily}
               >
                 {col.label}
               </Th>
             ))}
-            <Th textAlign="right" py={5} fontSize="11px" color="brand.navy" fontWeight="800" textTransform="uppercase" fontFamily={thFontFamily} letterSpacing={isCurriculum ? '0.07em' : '0.05em'}>ACTIONS</Th>
+            <Th textAlign="right" py={5} fontSize="11px" color="brand.navy" fontWeight="800" textTransform="uppercase" fontFamily={thFontFamily} letterSpacing={thLetterSpacing}>ACTIONS</Th>
           </Tr>
         </Thead>
         <Tbody>
@@ -102,8 +115,18 @@ export default function DataTable({
                   ) : (
                     <Text 
                       fontSize="13px" 
-                      fontWeight={col.bold ? "700" : "400"}
-                      color={col.bold ? "brand.navy" : "gray.600"}
+                      fontWeight={col.bold ? '700' : (isDashboard && col.key === 'role' ? '500' : '400')}
+                      color={
+                        col.bold
+                          ? 'brand.navy'
+                          : isCurriculum && col.key === 'principle'
+                            ? 'brand.text'
+                            : isCurriculum || isDashboard
+                              ? 'brand.muted'
+                              : 'gray.600'
+                      }
+                      textTransform={isDashboard && col.key === 'role' ? 'capitalize' : undefined}
+                      lineHeight={isCurriculum && col.key === 'principle' ? '1.55' : undefined}
                     >
                       {item[col.key]}
                     </Text>
@@ -111,7 +134,7 @@ export default function DataTable({
                 </Td>
               ))}
               <Td textAlign="right" py={tdPy}>
-                <HStack justify="flex-end" spacing={1} flexWrap="wrap">
+                <HStack justify="flex-end" spacing={polishedActions ? 2 : 1} flexWrap={{ base: 'wrap', lg: 'nowrap' }}>
                   {onView && (
                     <Button 
                       size="xs" 
@@ -120,7 +143,7 @@ export default function DataTable({
                       color={polishedActions ? 'brand.navy' : undefined}
                       fontWeight={polishedActions ? '600' : undefined}
                       onClick={() => onView(item)}
-                      _hover={polishedActions ? { bg: 'rgba(7,17,31,0.08)' } : { bg: 'blue.50' }}
+                      _hover={viewHover}
                       borderRadius="full"
                       px={3}
                     >
@@ -149,8 +172,10 @@ export default function DataTable({
                       : (typeof action.colorScheme === 'function' ? action.colorScheme(item) : action.colorScheme);
                     const dashExtra = polishedActions
                       ? (label === 'Resume'
-                        ? { color: 'brand.success', _hover: { bg: 'rgba(47,158,68,0.1)' } }
-                        : { color: 'brand.goldDark', _hover: { bg: 'rgba(214,168,79,0.16)' } })
+                        ? { color: 'brand.success', _hover: { bg: 'rgba(47,158,68,0.1)', textDecoration: 'underline', textUnderlineOffset: '2px' } }
+                        : label === 'Pause'
+                          ? { color: 'brand.goldDark', _hover: { bg: 'rgba(214,168,79,0.16)', textDecoration: 'underline', textUnderlineOffset: '2px' } }
+                          : { color: 'brand.goldDark', _hover: { bg: 'rgba(214,168,79,0.16)' } })
                       : {};
                     return (
                       <Button
@@ -177,7 +202,7 @@ export default function DataTable({
                       color={polishedActions ? 'brand.danger' : undefined}
                       fontWeight={polishedActions ? '600' : undefined}
                       onClick={() => onDelete(item)}
-                      _hover={{ bg: 'rgba(214, 69, 69, 0.1)' }}
+                      _hover={deleteHover}
                       borderRadius="full"
                       px={3}
                     >

@@ -39,3 +39,36 @@ body {
   background: rgba(214, 168, 79, 0.28);
   border-radius: 999px;
 }
+
+/* Curriculum → Stories tab: fixed mapping table columns (all story cards). */
+.story-items-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.story-items-table th.story-col-message,
+.story-items-table td.story-col-message {
+  width: 58%;
+  max-width: 58%;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.story-items-table th.story-col-principle,
+.story-items-table td.story-col-principle {
+  width: 32%;
+  max-width: 32%;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.story-items-table th.story-col-actions,
+.story-items-table td.story-col-actions {
+  width: 10%;
+  max-width: 10%;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}

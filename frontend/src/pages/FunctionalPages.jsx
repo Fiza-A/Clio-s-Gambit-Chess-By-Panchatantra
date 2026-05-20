@@ -452,6 +452,36 @@ function SettingsPage({ role, title, fields, save }) {
   return <PageShell role={role} title={title}><DashboardCard><VStack align="stretch">{fields.map((field) => <FormControl key={field}><FormLabel>{titleCase(field)}</FormLabel><Input value={values[field] || ''} onChange={(e) => setValues({ ...values, [field]: e.target.value })} /></FormControl>)}<FormControl display="flex" alignItems="center" gap={3}><FormLabel mb="0">Notifications</FormLabel><Switch defaultChecked /></FormControl><Button alignSelf="start" bg="brand.navy" color="white" onClick={submit}>Save</Button></VStack></DashboardCard></PageShell>;
 }
 
+/** Display-only status badge for admin Users table (does not change stored values). */
+function UserStatusBadge({ status }) {
+  const normalized = String(status || 'active').toLowerCase();
+  const styles = {
+    active: { bg: 'rgba(47,158,68,0.12)', color: 'brand.success', label: 'ACTIVE' },
+    inactive: { bg: 'rgba(169,119,33,0.14)', color: 'brand.goldDark', label: 'PAUSED' },
+    paused: { bg: 'rgba(169,119,33,0.14)', color: 'brand.goldDark', label: 'PAUSED' },
+    suspended: { bg: 'rgba(214,69,69,0.12)', color: 'brand.danger', label: 'SUSPENDED' },
+    blocked: { bg: 'rgba(214,69,69,0.12)', color: 'brand.danger', label: 'BLOCKED' },
+  };
+  const fallback = { bg: 'rgba(100,116,139,0.12)', color: 'brand.muted', label: normalized.toUpperCase() };
+  const { bg, color, label } = styles[normalized] || fallback;
+
+  return (
+    <Badge
+      textTransform="uppercase"
+      fontSize="10px"
+      fontWeight="700"
+      letterSpacing="0.06em"
+      px={2.5}
+      py={0.5}
+      borderRadius="full"
+      bg={bg}
+      color={color}
+    >
+      {label}
+    </Badge>
+  );
+}
+
 export function AdminUsers() {
   const { data, reload, error } = useLoad(() => adminApi.list('users'), []);
   const [search, setSearch] = useState('');
@@ -469,24 +499,19 @@ export function AdminUsers() {
   const columns = useMemo(
     () => [
       { key: 'name', label: 'NAME', bold: true },
-      { key: 'role', label: 'ROLE', badge: true },
+      {
+        key: 'role',
+        label: 'ROLE',
+        render: (role) => (
+          <Text fontSize="13px" color="brand.muted" fontWeight="500" textTransform="capitalize">
+            {role || '—'}
+          </Text>
+        ),
+      },
       {
         key: 'status',
         label: 'STATUS',
-        render: (status) => (
-          <Badge
-            textTransform="uppercase"
-            fontSize="10px"
-            px={2}
-            py={0.5}
-            borderRadius="full"
-            {...(status === 'inactive'
-              ? { bg: 'orange.100', color: 'orange.800' }
-              : { bg: 'green.100', color: 'green.800' })}
-          >
-            {status === 'inactive' ? 'inactive' : 'active'}
-          </Badge>
-        ),
+        render: (status) => <UserStatusBadge status={status} />,
       },
     ],
     [],
@@ -536,12 +561,13 @@ export function AdminUsers() {
   };
 
   return (
-    <PageShell role="admin" title="Users">
+    <PageShell role="admin" title="Users" dashboardHeading>
       {!data && !error && <LoadingState />}
       {error && <ErrorState message={error} />}
       {data && (
-        <VStack align="stretch" spacing={5}>
+        <VStack align="stretch" spacing={4} w="100%">
           <SearchFilterBar
+            variant="admin"
             search={search}
             setSearch={setSearch}
             filter={filter}
@@ -549,6 +575,7 @@ export function AdminUsers() {
             filters={['all', 'student', 'coach', 'admin']}
           />
           <DataTable
+            appearance="dashboard"
             columns={columns}
             items={users}
             onView={(user) => toast({ title: `Viewing ${user.name}`, status: 'info' })}
@@ -582,6 +609,7 @@ export function AdminCrudBody({
   addButtonProps,
   onActionsReady,
   dataTableAppearance = 'default',
+  embeddedInCurriculum = false,
 }) {
   const modal = useDisclosure();
   const toast = useToast();
@@ -609,18 +637,27 @@ export function AdminCrudBody({
     modal.onClose();
     reload();
   };
-  return (
+  const tableBlock = (
     <>
       {!hideAddButton && (
         <Button mb={4} onClick={openAdd} {...(addButtonProps || {})}>
           Add {addButtonLabel}
         </Button>
       )}
-      {!data ? <LoadingState /> : (
+      {!data ? (
+        embeddedInCurriculum ? (
+          <Box py={10} px={4} textAlign="center">
+            <LoadingState />
+          </Box>
+        ) : (
+          <LoadingState />
+        )
+      ) : (
         <DataTable
           items={data}
           columns={columns}
           appearance={dataTableAppearance}
+          nested={embeddedInCurriculum}
           onView={onView}
           onEdit={(item) => { setEditing(item); modal.onOpen(); }}
           onDelete={async (item) => {
@@ -629,6 +666,25 @@ export function AdminCrudBody({
             reload();
           }}
         />
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {embeddedInCurriculum ? (
+        <Box
+          bg="white"
+          borderRadius="16px"
+          border="1px solid"
+          borderColor="rgba(214,168,79,0.14)"
+          boxShadow="0 8px 28px rgba(7,17,31,0.055)"
+          overflow="hidden"
+        >
+          {tableBlock}
+        </Box>
+      ) : (
+        tableBlock
       )}
       <FormModal
         isOpen={modal.isOpen}
@@ -736,8 +792,9 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
   }
 
   return (
-    <Box mt={3} pl={6} overflowX="auto">
+    <Box mt={3} pl={6} w="100%" maxW="100%" overflowX="auto">
       <Box
+        w="100%"
         borderRadius="14px"
         border="1px solid"
         borderColor="rgba(214,168,79,0.14)"
@@ -745,12 +802,17 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
         boxShadow="0 8px 28px rgba(7,17,31,0.055)"
         overflow="hidden"
       >
-        <Table variant="simple" size="sm">
+        <Table variant="simple" size="sm" className="story-items-table" sx={{ tableLayout: 'fixed', width: '100%' }}>
+          <colgroup>
+            <col className="story-col-message" style={{ width: '58%' }} />
+            <col className="story-col-principle" style={{ width: '32%' }} />
+            <col className="story-col-actions" style={{ width: '10%' }} />
+          </colgroup>
           <Thead bg="rgba(250, 247, 240, 0.95)">
             <Tr>
-              <Th py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">MESSAGE / STORY TEXT</Th>
-              <Th py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">PRINCIPLE</Th>
-              <Th py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body" textAlign="right">ACTIONS</Th>
+              <Th className="story-col-message" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">MESSAGE / STORY TEXT</Th>
+              <Th className="story-col-principle" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">PRINCIPLE</Th>
+              <Th className="story-col-actions" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">ACTIONS</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -769,24 +831,25 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
                   borderColor="rgba(7,17,31,0.06)"
                   _hover={{ bg: 'rgba(214,168,79,0.07)', transition: 'background 0.18s ease' }}
                 >
-                  <Td py={4} verticalAlign="middle">
-                    <Text fontSize="13px" color="gray.600" lineHeight="1.6" whiteSpace="normal">
+                  <Td className="story-col-message" py={4}>
+                    <Text fontSize="13px" color="brand.muted" lineHeight="1.6" whiteSpace="normal" wordBreak="break-word">
                       {m.storyText}
                     </Text>
                   </Td>
-                  <Td py={4} verticalAlign="middle">
+                  <Td className="story-col-principle" py={4}>
                     <Text 
                       fontSize="13px" 
                       fontWeight="700" 
-                      color="brand.navy" 
+                      color="brand.text" 
                       lineHeight="1.5" 
                       whiteSpace="normal"
+                      wordBreak="break-word"
                       title={m.principleId}
                     >
                       {principleName}
                     </Text>
                   </Td>
-                  <Td py={4} whiteSpace="nowrap" textAlign="right" verticalAlign="middle">
+                  <Td className="story-col-actions" py={4}>
                     <Button 
                       size="xs" 
                       variant="ghost" 
@@ -794,7 +857,7 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
                       fontWeight="600"
                       borderRadius="full"
                       px={3}
-                      _hover={{ bg: 'rgba(7,17,31,0.08)' }}
+                      _hover={{ bg: 'rgba(7,17,31,0.08)', textDecoration: 'underline', textUnderlineOffset: '2px' }}
                       onClick={() => handleEdit(m)}
                     >
                       Edit
@@ -827,34 +890,44 @@ const NestedStoriesView = ({ search, principles = [] }) => {
     reload();
   };
 
+  const sortedModules = useMemo(
+    () => sortNestedCurriculumModules(data?.modules ?? []),
+    [data],
+  );
+
+  const filteredModules = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return sortedModules.filter((m) => {
+      const moduleMatches = m.name.toLowerCase().includes(searchLower);
+
+      const chaptersWithMatches = m.chapters.filter((c) => {
+        const chapterMatches = c.name.toLowerCase().includes(searchLower);
+        const storiesWithMatches = c.stories.filter((s) => {
+          const storyMatches =
+            s.title.toLowerCase().includes(searchLower)
+            || (s.description || '').toLowerCase().includes(searchLower)
+            || s.status.includes(searchLower);
+          const mappingsWithMatches = s.mappings.filter((sm) =>
+            (sm.storyText || '').toLowerCase().includes(searchLower)
+            || (sm.principleName || '').toLowerCase().includes(searchLower)
+            || (sm.principleLabel || '').toLowerCase().includes(searchLower)
+            || (sm.principleId || '').toLowerCase().includes(searchLower)
+            || (principles.find(
+              (p) => String(p.id).trim().toLowerCase() === String(sm.principleId).trim().toLowerCase(),
+            )?.name || '').toLowerCase().includes(searchLower),
+          );
+          return storyMatches || mappingsWithMatches.length > 0;
+        });
+        return chapterMatches || storiesWithMatches.length > 0;
+      });
+
+      return moduleMatches || chaptersWithMatches.length > 0;
+    });
+  }, [sortedModules, search, principles]);
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
   if (!data?.modules?.length) return <EmptyState title="No curriculum stories found." />;
-
-  const filteredModules = data.modules.filter(m => {
-    const searchLower = search.toLowerCase();
-    const moduleMatches = m.name.toLowerCase().includes(searchLower);
-    
-    const chaptersWithMatches = m.chapters.filter(c => {
-      const chapterMatches = c.name.toLowerCase().includes(searchLower);
-      const storiesWithMatches = c.stories.filter(s => {
-        const storyMatches = s.title.toLowerCase().includes(searchLower) || (s.description || '').toLowerCase().includes(searchLower) || s.status.includes(searchLower);
-        const mappingsWithMatches = s.mappings.filter(sm => 
-          (sm.storyText || '').toLowerCase().includes(searchLower) || 
-          (sm.principleName || '').toLowerCase().includes(searchLower) || 
-          (sm.principleLabel || '').toLowerCase().includes(searchLower) ||
-          (sm.principleId || '').toLowerCase().includes(searchLower) ||
-          (principles.find( 
-            p => String(p.id).trim().toLowerCase() === String(sm.principleId).trim().toLowerCase() 
-          )?.name || '').toLowerCase().includes(searchLower)
-        );
-        return storyMatches || mappingsWithMatches.length > 0;
-      });
-      return chapterMatches || storiesWithMatches.length > 0;
-    });
-    
-    return moduleMatches || chaptersWithMatches.length > 0;
-  });
 
   if (filteredModules.length === 0 && search) {
     return <EmptyState title="No curriculum stories found for this search." />;
@@ -1455,14 +1528,67 @@ export function AdminGamesDetails() {
   );
 }
 
-/** Sort curriculum modules by `module_id` (pure integer strings compare numerically). */
-function compareModulesByModuleId(a, b) {
-  const sa = String(a?.module_id ?? '').trim();
-  const sb = String(b?.module_id ?? '').trim();
+/** Natural ascending compare for ID strings (integers, M001, C002, etc.). */
+function compareNaturalIds(idA, idB) {
+  const sa = String(idA ?? '').trim();
+  const sb = String(idB ?? '').trim();
+  if (sa === sb) return 0;
   const numA = Number(sa);
   const numB = Number(sb);
   if (/^-?\d+$/.test(sa) && /^-?\d+$/.test(sb)) return numA - numB;
   return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function getModuleSortId(item) {
+  return item?.module_id ?? item?.moduleId ?? item?.module?.id ?? item?.id ?? '';
+}
+
+function getChapterSortId(item) {
+  return item?.chapter_id ?? item?.chapterId ?? item?.id ?? '';
+}
+
+/** Sort curriculum modules by module ID. */
+function compareModulesByModuleId(a, b) {
+  return compareNaturalIds(getModuleSortId(a), getModuleSortId(b));
+}
+
+/** Sort chapters by module ID, then chapter ID within the same module. */
+function compareChaptersByModuleThenChapterId(a, b) {
+  const byModule = compareNaturalIds(
+    a?.module_id ?? a?.moduleId ?? a?.module?.id,
+    b?.module_id ?? b?.moduleId ?? b?.module?.id,
+  );
+  if (byModule !== 0) return byModule;
+  return compareNaturalIds(getChapterSortId(a), getChapterSortId(b));
+}
+
+/** Sort chapters within a single module by chapter ID. */
+function compareChaptersByChapterId(a, b) {
+  return compareNaturalIds(getChapterSortId(a), getChapterSortId(b));
+}
+
+function getStorySortId(item) {
+  return item?.story_id ?? item?.storyId ?? item?.id ?? '';
+}
+
+/** Sort stories within a single chapter by story ID. */
+function compareStoriesByStoryId(a, b) {
+  return compareNaturalIds(getStorySortId(a), getStorySortId(b));
+}
+
+/** Sort nested curriculum tree: modules → chapters → stories (by ID at each level). */
+function sortNestedCurriculumModules(modules) {
+  return [...modules]
+    .sort(compareModulesByModuleId)
+    .map((module) => ({
+      ...module,
+      chapters: [...(module.chapters || [])]
+        .sort(compareChaptersByChapterId)
+        .map((chapter) => ({
+          ...chapter,
+          stories: [...(chapter.stories || [])].sort(compareStoriesByStoryId),
+        })),
+    }));
 }
 
 const CURRICULUM_TAB_SLUGS = ['modules', 'chapters', 'stories', 'principles'];
@@ -1477,6 +1603,27 @@ function parseCurriculumTab(tabParam) {
   if (!Number.isNaN(n) && n >= 0 && n < CURRICULUM_TAB_SLUGS.length) return n;
   return 0;
 }
+
+/** Shared toolbar card for Curriculum tabs (cream surface, gold border). */
+const CURRICULUM_TOOLBAR_CARD = {
+  bg: 'brand.card',
+  borderRadius: '16px',
+  border: '1px solid',
+  borderColor: 'rgba(214,168,79,0.16)',
+  boxShadow: '0 10px 32px rgba(7, 17, 31, 0.06)',
+  px: { base: 3, md: 5 },
+  py: { base: 3, md: 4 },
+};
+
+/** Primary action button on Curriculum toolbar. */
+const CURRICULUM_PRIMARY_BUTTON = {
+  bg: 'brand.navy',
+  color: 'white',
+  fontWeight: 700,
+  borderRadius: '12px',
+  _hover: { bg: '#122536' },
+  _active: { bg: '#050d18' },
+};
 
 /** Positions API (`resource="positions"`) — Principles UI in admin curriculum tab. */
 const ADMIN_POSITIONS_TAB_CRUD = {
@@ -1590,7 +1737,12 @@ export function AdminCurriculum() {
     const filtered = list.filter((m) => m.title.toLowerCase().includes(needle));
     return [...filtered].sort(compareModulesByModuleId);
   }, [data, search]);
-  const filteredChapters = (data?.chapters || []).filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
+  const filteredChapters = useMemo(() => {
+    const list = data?.chapters || [];
+    const needle = search.toLowerCase();
+    const filtered = list.filter((c) => c.title.toLowerCase().includes(needle));
+    return [...filtered].sort(compareChaptersByModuleThenChapterId);
+  }, [data, search]);
 
   return (
     <PageShell role="admin" title="Curriculum">
@@ -1605,23 +1757,15 @@ export function AdminCurriculum() {
             zIndex="20" 
             bg="brand.cream" 
             pt={4}
-            pb={4} 
+            pb={activeTab === 3 ? 3 : 4}
             borderBottom="1px solid"
             borderColor="rgba(214,168,79,0.18)"
             boxShadow="0 4px 18px rgba(7, 17, 31, 0.04)"
           >
-            <VStack align="stretch" spacing={4}>
+            <VStack align="stretch" spacing={activeTab === 3 ? 3 : 4}>
               {activeTab !== 3 && <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />}
               
-              <Box
-                bg="white"
-                borderRadius="16px"
-                border="1px solid"
-                borderColor="rgba(214,168,79,0.16)"
-                boxShadow="0 10px 32px rgba(7, 17, 31, 0.06)"
-                px={{ base: 3, md: 5 }}
-                py={{ base: 3, md: 4 }}
-              >
+              <Box {...CURRICULUM_TOOLBAR_CARD}>
                 <Flex
                   flexWrap="wrap"
                   gap={{ base: 3, md: 4 }}
@@ -1662,12 +1806,7 @@ export function AdminCurriculum() {
                   </Box>
 
                   <Button 
-                    bg="brand.navy" 
-                    color="white" 
-                    fontWeight={700}
-                    borderRadius="12px"
-                    _hover={{ bg: '#122536' }} 
-                    _active={{ bg: '#050d18' }}
+                    {...CURRICULUM_PRIMARY_BUTTON}
                     onClick={() => {
                       if (activeTab === 3) {
                         principlesCrudActionsRef.current?.openAdd();
@@ -1688,12 +1827,12 @@ export function AdminCurriculum() {
           </Box>
 
           {/* Scrollable Content Section */}
-          <Box overflowY="auto" flex="1" pt={8} pr={2} sx={{
+          <Box overflowY="auto" flex="1" pt={activeTab === 3 ? 4 : 6} pr={2} sx={{
             '&::-webkit-scrollbar': { width: '6px' },
             '&::-webkit-scrollbar-track': { background: 'transparent' },
             '&::-webkit-scrollbar-thumb': { background: 'rgba(214,168,79,0.2)', borderRadius: '10px' },
           }}>
-            <Box pb={10}>
+            <Box pb={activeTab === 3 ? 6 : 10}>
               {activeTab === 0 && (
                 <DataTable
                   items={filteredModules}
@@ -1710,7 +1849,9 @@ export function AdminCurriculum() {
               {activeTab === 1 && (
                 <>
                   {filteredModules.map(module => {
-                    const moduleChapters = filteredChapters.filter(c => c.module_id === module.module_id);
+                    const moduleChapters = [...filteredChapters.filter((c) => c.module_id === module.module_id)].sort(
+                      compareChaptersByChapterId,
+                    );
                     return (
                       <Box key={module.module_id} mb={8} p={5} bg="brand.card" borderRadius="14px" border="1px solid" borderColor="rgba(214,168,79,0.14)" boxShadow="0 8px 28px rgba(7,17,31,0.055)">
                         <Flex justify="space-between" align="center" mb={4}>
@@ -1751,6 +1892,7 @@ export function AdminCurriculum() {
                   hideAddButton
                   onActionsReady={registerPrinciplesActions}
                   dataTableAppearance="curriculum"
+                  embeddedInCurriculum
                 />
               )}
             </Box>
