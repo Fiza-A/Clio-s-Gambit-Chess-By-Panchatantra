@@ -72,3 +72,41 @@ body {
   white-space: nowrap;
   vertical-align: middle;
 }
+
+/* Admin dashboard — Users by Role donut legend */
+.users-by-role-card {
+  overflow: visible;
+}
+
+.users-by-role-card .donut-chart-layout {
+  min-width: 0;
+}
+
+.users-by-role-card .donut-chart-area {
+  flex: 0 0 200px;
+  max-width: 200px;
+}
+
+.users-by-role-card .donut-chart-legend {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+}
+
+.users-by-role-card .donut-legend-value {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+@media (max-width: 767px) {
+  .users-by-role-card .donut-chart-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .users-by-role-card .donut-chart-area {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

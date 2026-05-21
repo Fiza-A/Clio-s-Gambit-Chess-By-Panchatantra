@@ -50,12 +50,12 @@ export default function AdminDashboard() {
         <>
           <TopBar role="admin" {...data.topbar} onCta={exportReport} />
           <SimpleGrid columns={{ base: 1, md: 2, xl: 5 }} spacing={4} mb={5}>{data.stats.map((stat) => <StatCard key={stat.label} stat={stat} />)}</SimpleGrid>
-          <Grid templateColumns={{ base: '1fr', xl: '1.5fr 1fr 1fr' }} gap={5}>
+          <Grid templateColumns={{ base: '1fr', xl: '1.5fr 1.2fr 1fr' }} gap={5}>
             <DashboardCard title="User Growth Overview" action={<MonthSelect />}>
               <LineAreaChart area data={data.userGrowth} lines={[{ key: 'total', name: 'Total Users', color: '#07111F' }, { key: 'active', name: 'Active Students', color: '#D6A84F' }]} height={286} />
             </DashboardCard>
-            <DashboardCard title="Users by Role">
-              <DonutChart data={data.roles} centerValue="2,458" centerLabel="Total Users" />
+            <DashboardCard title="Users by Role" className="users-by-role-card" overflow="visible">
+              <DonutChart variant="roles" data={data.roles} centerValue="2,458" centerLabel="Total Users" />
             </DashboardCard>
             <DashboardCard title="Recent Activity" action={<Button size="sm" variant="ghost" onClick={() => navigate('/admin/reports')}>View All</Button>}>
               <ActivityList items={data.recentActivity} />
