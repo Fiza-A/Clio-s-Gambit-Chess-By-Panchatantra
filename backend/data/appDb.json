@@ -1341,7 +1341,19 @@
           }
         ]
       }
-    ]
+    ],
+    "storyProgressById": {
+      "ST084": {
+        "progress": 100
+      },
+      "ST090": {
+        "progress": 25
+      },
+      "ST01": {
+        "progress": 100,
+        "readPage": 0
+      }
+    }
   },
   "coach": {
     "students": [

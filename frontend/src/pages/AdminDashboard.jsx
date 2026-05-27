@@ -76,7 +76,7 @@ export default function AdminDashboard() {
                   <QuickActionCard icon={ExtensionIcon} title="Add New Puzzle" onClick={() => navigate('/admin/puzzles')} />
                   <QuickActionCard icon={CalendarMonthIcon} title="Create Class" onClick={() => navigate('/admin/classes')} />
                   <QuickActionCard icon={PersonAddIcon} title="Invite Users" onClick={() => runAction('invite-users', 'Invite Users', { count: 5 })} />
-                  <QuickActionCard icon={AnalyticsIcon} title="View Analytics" wide onClick={() => navigate('/admin/analytics')} />
+                  <QuickActionCard icon={AnalyticsIcon} title="View Reports" wide onClick={() => navigate('/admin/reports')} />
                 </SimpleGrid>
               </DashboardCard>
               <Box mt={5}><QuoteCard quote={data.topbar.title.includes('Admin') ? 'A wise king learns every day.' : ''} by="Panchatantra" /></Box>

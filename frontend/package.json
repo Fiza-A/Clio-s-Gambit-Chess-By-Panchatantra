@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "install:all": "npm install && npm install --prefix ../backend",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "npm run kill-api-port && concurrently \"npm run server\" \"npm run client\"",
     "kill-api-port": "npm run kill-port-5000 --prefix ../backend",
     "server": "npm run dev --prefix ../backend",
     "client": "vite --host 127.0.0.1 --port 5173",

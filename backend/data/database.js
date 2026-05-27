@@ -3,44 +3,123 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { adminDashboard, coachDashboard, studentDashboard } from './dashboardData.js';
+import { readDb, writeDb } from './mockDb.js';
+import { buildSchemaInfo } from './schemaAdapter.js';
+
+let cachedSchema = null;
+
+export async function getDbSchema() {
+  if (cachedSchema) return cachedSchema;
+  const tablesRes = await pool.query(`
+    SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+  `);
+  cachedSchema = buildSchemaInfo(tablesRes.rows.map((r) => r.tablename));
+  return cachedSchema;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Explicitly load .env from the backend directory
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-console.log('[DATABASE] Connecting to Supabase (PostgreSQL)...');
-console.log('[DATABASE] DATABASE_URL present:', !!process.env.DATABASE_URL);
-
-// PostgreSQL Pool
-const { Pool } = pg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
+function resolveConnectionString() {
+  const raw = process.env.DATABASE_URL || process.env.DATABASE_POOLER_URL;
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.includes(':6543') && !trimmed.includes('pgbouncer=')) {
+    return trimmed.includes('?') ? `${trimmed}&pgbouncer=true` : `${trimmed}?pgbouncer=true`;
   }
-});
+  return trimmed;
+}
+
+const connectionString = resolveConnectionString();
+
+function maskConnectionString(url) {
+  if (!url) return '(not set)';
+  try {
+    const u = new URL(url);
+    return `${u.protocol}//${u.username ? '***@' : ''}${u.host}${u.pathname}`;
+  } catch {
+    return '(invalid URL)';
+  }
+}
+
+console.log('[DATABASE] Connecting to Supabase (PostgreSQL)...');
+console.log('[DATABASE] Target:', maskConnectionString(connectionString));
+console.log('[DATABASE] DATABASE_URL set:', !!process.env.DATABASE_URL);
+console.log('[DATABASE] DATABASE_POOLER_URL set:', !!process.env.DATABASE_POOLER_URL);
+
+const { Pool } = pg;
+const pool = connectionString
+  ? new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 15_000,
+    })
+  : null;
 
 if (pool) {
-  console.log('[DATABASE] Supabase Connection Pool created');
+  pool.on('error', (err) => {
+    console.error('[DATABASE] Unexpected pool error:', err.message);
+  });
+  console.log('[DATABASE] Supabase connection pool created');
+} else {
+  console.error('[DATABASE] No DATABASE_URL or DATABASE_POOLER_URL — API database queries will fail');
+}
+
+export async function verifyDatabaseConnection() {
+  if (!pool) {
+    return { ok: false, error: 'DATABASE_URL is not configured in backend/.env' };
+  }
+  try {
+    const res = await pool.query('SELECT current_database() AS db, NOW() AS server_time');
+    const schema = await getDbSchema();
+
+    const count = async (table) => {
+      try {
+        const rel = table === 'Login' ? 'public."Login"' : `public.${table}`;
+        const r = await pool.query(`SELECT COUNT(*)::int AS n FROM ${rel}`);
+        return r.rows[0]?.n ?? 0;
+      } catch {
+        return null;
+      }
+    };
+
+    const counts = {
+      modules: schema.hasModule ? await count('module') : null,
+      chapters: schema.hasChapter ? await count('chapter') : null,
+      stories: schema.hasStories ? await count('stories') : null,
+      principles: schema.hasPrinciples ? await count('principles') : null,
+      users: schema.hasLogin ? await count('Login') : null,
+    };
+
+    return {
+      ok: schema.curriculumReady && schema.hasLogin,
+      database: res.rows[0]?.db,
+      serverTime: res.rows[0]?.server_time,
+      schema,
+      counts,
+    };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
 export async function query(text, params) {
-  console.log(`[DATABASE] Executing Query: ${text}`);
-  if (params) console.log(`[DATABASE] With Params: ${JSON.stringify(params)}`);
-
+  if (!pool) {
+    throw new Error('Database not configured. Set DATABASE_URL in backend/.env');
+  }
   try {
-    const res = await pool.query(text, params);
-    console.log(`[DATABASE] Supabase Result: ${res.rows.length} rows returned`);
-    return res;
+    return await pool.query(text, params);
   } catch (err) {
-    console.error('[DATABASE] Supabase Query Error:', err);
+    console.error('[DATABASE] Query error:', err.message);
     throw err;
   }
 }
 
-// Keeping mock data for dashboards temporarily as they are not fully migrated to SQL yet
 export function getDashboard(role) {
   if (role === 'admin') return adminDashboard;
   if (role === 'coach') return coachDashboard;

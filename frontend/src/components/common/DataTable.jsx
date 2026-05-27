@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Table, Tbody, Td, Th, Thead, Tr, Box, Text, HStack } from '@chakra-ui/react';
+import EmptyState from './EmptyState.jsx';
 
 /**
  * @param {'default' | 'dashboard' | 'curriculum'} appearance — 'curriculum' matches admin Curriculum tabs (cream thead, navy actions).
@@ -15,6 +16,8 @@ export default function DataTable({
   extraActions = [],
   appearance = 'default',
   nested = false,
+  emptyTitle,
+  emptyMessage,
 }) {
   const isDashboard = appearance === 'dashboard';
   const isCurriculum = appearance === 'curriculum';
@@ -77,6 +80,17 @@ export default function DataTable({
     : { bg: 'rgba(214, 69, 69, 0.1)' };
 
   const actionLabel = (action, item) => (typeof action.label === 'function' ? action.label(item) : action.label);
+
+  if (!items.length) {
+    return (
+      <Box {...wrapProps} p={nested ? 4 : 6}>
+        <EmptyState
+          title={emptyTitle || 'No records found'}
+          message={emptyMessage || 'Nothing to show here yet.'}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box {...wrapProps}>

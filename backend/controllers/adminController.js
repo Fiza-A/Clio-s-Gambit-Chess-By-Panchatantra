@@ -1,10 +1,34 @@
 import bcrypt from 'bcrypt';
 import { readDb, writeDb } from '../data/mockDb.js';
 import { makeId } from '../utils/id.js';
-import { query } from '../data/database.js';
+import { query, getDbSchema } from '../data/database.js';
+import {
+  T,
+  mappingKey,
+  parseMappingKey,
+  normalizeStoryMessages,
+  mapModuleListRow,
+  mapChapterListRow,
+  mapStoryListRow,
+  mapPrincipleRow,
+} from '../data/dbSchema.js';
+import {
+  allocateNextStoryId,
+  compareChapterRowsById,
+  compareModuleRowsById,
+  comparePrincipleRowsById,
+  compareStoryRowsById,
+  ensureCurriculumIdsReady,
+  insertModule,
+  insertChapter,
+  insertPrincipleWithSequentialId,
+} from '../data/curriculumIds.js';
 import * as chessComService from '../services/chessComService.js';
+import { parseIds } from '../utils/parseIds.js';
 
 import fetch from 'node-fetch';
+
+export { parseIds };
 
 const byId = (items, id) => items.find((item) => item.id === id);
 
@@ -15,26 +39,6 @@ let playersListCache = { expiresAt: 0, rows: null };
 function invalidatePlayersListCache() {
   playersListCache = { expiresAt: 0, rows: null };
 }
-
-export const parseIds = (idsString) => {
-  if (!idsString) return [];
-  if (Array.isArray(idsString)) return idsString;
-  if (typeof idsString !== 'string') return [];
-  
-  const trimmed = idsString.trim();
-  if (!trimmed) return [];
-
-  try {
-    // Try standard JSON parse first
-    return JSON.parse(trimmed.replace(/'/g, '"'));
-  } catch (e) {
-    // If it's like [CHAP1, CHAP2], manually parse it
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      return trimmed.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
-    }
-    return [];
-  }
-};
 
 const crud = (section) => ({
   list: (_req, res) => res.json(readDb().admin[section]),
@@ -62,22 +66,20 @@ const crud = (section) => ({
 
 export const dashboard = async (_req, res) => {
   try {
-    const usersCount = await query('SELECT COUNT(*) FROM "Login"');
-    const modulesCount = await query('SELECT COUNT(*) FROM "module"');
-    const chaptersCount = await query('SELECT COUNT(*) FROM "chapter"');
-    const storiesCount = await query('SELECT COUNT(*) FROM "story"');
-    
+    const usersCount = await query(`SELECT COUNT(*)::int AS count FROM "${T.login}"`);
+    const modulesCount = await query(`SELECT COUNT(*)::int AS count FROM ${T.module}`);
+    const chaptersCount = await query(`SELECT COUNT(*)::int AS count FROM ${T.chapter}`);
+    const storiesCount = await query(`SELECT COUNT(*)::int AS count FROM ${T.stories}`);
+
     const baseDashboard = readDb().dashboards.admin;
-    
-    // Update real-time stats
-    baseDashboard.stats[0].value = usersCount.rows[0].count; // Total Users
-    baseDashboard.stats[2].value = storiesCount.rows[0].count; // Total Stories
-    baseDashboard.stats[2].subtitle = `${modulesCount.rows[0].count} Modules · ${chaptersCount.rows[0].count} Chapters`;
-    
-    // Update content overview
-    baseDashboard.content[0].value = modulesCount.rows[0].count;
-    baseDashboard.content[1].value = chaptersCount.rows[0].count;
-    baseDashboard.content[2].value = storiesCount.rows[0].count;
+
+    baseDashboard.stats[0].value = usersCount.rows[0]?.count ?? 0;
+    baseDashboard.stats[2].value = storiesCount.rows[0]?.count ?? 0;
+    baseDashboard.stats[2].subtitle = `${modulesCount.rows[0]?.count ?? 0} Modules · ${chaptersCount.rows[0]?.count ?? 0} Chapters`;
+
+    baseDashboard.content[0].value = modulesCount.rows[0]?.count ?? 0;
+    baseDashboard.content[1].value = chaptersCount.rows[0]?.count ?? 0;
+    baseDashboard.content[2].value = storiesCount.rows[0]?.count ?? 0;
 
     res.json(baseDashboard);
   } catch (err) {
@@ -168,188 +170,153 @@ export const users = {
     }
   }
 };
-export const nestedStories = async (_req, res) => { 
-  console.log('[DEBUG] Calling nestedStories V2 - NO order_index');
-  try { 
-    const sql = ` 
-      SELECT 
-        m.module_id, 
-        m.module_name, 
+export const nestedStories = async (_req, res) => {
+  try {
+    await ensureCurriculumIdsReady();
+    const sql = `
+      SELECT
+        m.moduleid,
+        m.modulename,
+        c.chapterid,
+        c.chaptername,
+        s.storyid,
+        s.storytitle,
+        s.storydescription,
+        s.storytext,
+        spm.principleid,
+        p.principlename
+      FROM ${T.module} m
+      LEFT JOIN ${T.chapter} c ON c.moduleid = m.moduleid
+      LEFT JOIN ${T.stories} s ON s.chapterid = c.chapterid
+      LEFT JOIN ${T.storyPrincipleMapping} spm ON spm.storyid = s.storyid
+      LEFT JOIN ${T.principles} p ON p.principleid = spm.principleid
+      ORDER BY m.modulename ASC, c.chaptername ASC, s.storytitle ASC, p.principlename ASC
+    `;
 
-        c.chapter_id, 
-        c.chapter_name, 
+    const rows = (await query(sql)).rows;
+    const modulesMap = new Map();
 
-        s.story_id, 
-        s.title AS story_title, 
-        s.description AS story_description, 
-        s.status AS story_status, 
+    rows.forEach((row) => {
+      if (!modulesMap.has(row.moduleid)) {
+        modulesMap.set(row.moduleid, {
+          id: row.moduleid,
+          name: row.modulename,
+          subtitle: '',
+          level: '',
+          order: 0,
+          chapters: new Map(),
+        });
+      }
 
-        sm.mapping_id, 
-        sm.story_text, 
-        sm.principle_id, 
+      const module = modulesMap.get(row.moduleid);
 
-        p.id AS joined_principle_id, 
-        p.name AS principle_name 
+      if (row.chapterid && !module.chapters.has(row.chapterid)) {
+        module.chapters.set(row.chapterid, {
+          id: row.chapterid,
+          name: row.chaptername,
+          order: 0,
+          stories: new Map(),
+        });
+      }
 
-      FROM public.module m 
+      if (!row.chapterid || !row.storyid) return;
 
-      LEFT JOIN public.chapter c 
-        ON LOWER(TRIM(c.module_id)) = LOWER(TRIM(m.module_id)) 
+      const chapter = module.chapters.get(row.chapterid);
 
-      LEFT JOIN public.story s 
-        ON LOWER(TRIM(s.chapter_id)) = LOWER(TRIM(c.chapter_id)) 
+      if (!chapter.stories.has(row.storyid)) {
+        chapter.stories.set(row.storyid, {
+          id: row.storyid,
+          title: row.storytitle,
+          description: row.storydescription || '',
+          order: 0,
+          status: 'published',
+          mappings: [],
+        });
+      }
 
-      LEFT JOIN public.story_mapping sm 
-        ON LOWER(TRIM(sm.story_id)) = LOWER(TRIM(s.story_id)) 
+      if (row.principleid) {
+        const story = chapter.stories.get(row.storyid);
+        const mid = mappingKey(row.storyid, row.principleid);
+        if (!story.mappings.some((m) => m.id === mid)) {
+          story.mappings.push({
+            id: mid,
+            mappingId: mid,
+            storyId: row.storyid,
+            storyName: row.storytitle,
+            storyDescription: row.storydescription || '',
+            principleId: row.principleid,
+            principleName: row.principlename || null,
+            storyText: row.storytext || '',
+            isDone: true,
+          });
+        }
+      } else if (!chapter.stories.get(row.storyid).mappings.length) {
+        chapter.stories.get(row.storyid).mappings.push({
+          id: mappingKey(row.storyid, 'none'),
+          mappingId: mappingKey(row.storyid, 'none'),
+          storyId: row.storyid,
+          storyName: row.storytitle,
+          storyDescription: row.storydescription || '',
+          principleId: null,
+          principleName: null,
+          storyText: row.storytext || '',
+          isDone: true,
+        });
+      }
+    });
 
-      LEFT JOIN public.principles p 
-        ON LOWER(TRIM(p.id)) = LOWER(TRIM(sm.principle_id)) 
+    const nestedData = Array.from(modulesMap.values()).map((m) => ({
+      ...m,
+      chapters: Array.from(m.chapters.values()).map((c) => ({
+        ...c,
+        stories: Array.from(c.stories.values()),
+      })),
+    }));
 
-      ORDER BY 
-        m.module_name ASC, 
-        c.chapter_name ASC, 
-        s.title ASC, 
-        sm.mapping_id ASC; 
-    `; 
-
-    const result = await query(sql); 
-    const rows = result.rows; 
-
-    console.log('[nestedStories] principle debug:', rows.slice(0, 20).map(r => ({ 
-      mapping_id: r.mapping_id, 
-      story_id: r.story_id, 
-      story_title: r.story_title, 
-      principle_id: r.principle_id, 
-      joined_principle_id: r.joined_principle_id, 
-      principle_name: r.principle_name 
-    }))); 
-
-    const modulesMap = new Map(); 
-
-    rows.forEach(row => { 
-      if (!modulesMap.has(row.module_id)) { 
-        modulesMap.set(row.module_id, { 
-          id: row.module_id, 
-          name: row.module_name, 
-          subtitle: '', 
-          level: '', 
-          order: 0, 
-          chapters: new Map() 
-        }); 
-      } 
-
-      const module = modulesMap.get(row.module_id); 
-
-      if (row.chapter_id && !module.chapters.has(row.chapter_id)) { 
-        module.chapters.set(row.chapter_id, { 
-          id: row.chapter_id, 
-          name: row.chapter_name, 
-          order: 0, 
-          stories: new Map() 
-        }); 
-      } 
-
-      if (row.chapter_id) { 
-        const chapter = module.chapters.get(row.chapter_id); 
-
-        if (row.story_id && !chapter.stories.has(row.story_id)) { 
-          chapter.stories.set(row.story_id, { 
-            id: row.story_id, 
-            title: row.story_title, 
-            description: row.story_description, 
-            order: 0, 
-            status: (row.story_status || 'published').toLowerCase(), 
-            mappings: [] 
-          }); 
-        } 
-
-        if (row.mapping_id && row.story_id) { 
-          const story = chapter.stories.get(row.story_id); 
-
-          story.mappings.push({ 
-            id: row.mapping_id, 
-            mappingId: row.mapping_id, 
-
-            storyId: row.story_id, 
-            storyName: row.story_title, 
-            storyDescription: row.story_description, 
-
-            principleId: row.principle_id, 
-            principleName: row.principle_name || null, 
-
-            storyText: row.story_text || '', 
-            isDone: row.isdone || false 
-          }); 
-        } 
-      } 
-    }); 
-
-    const nestedData = Array.from(modulesMap.values()).map(m => ({ 
-      ...m, 
-      chapters: Array.from(m.chapters.values()).map(c => ({ 
-        ...c, 
-        stories: Array.from(c.stories.values()) 
-      })) 
-    })); 
-
-    res.json({ modules: nestedData }); 
-  } catch (err) { 
-    console.error('[ADMIN API] Error in nestedStories:', err); 
-    res.status(500).json({ 
-      error: 'Failed to fetch nested curriculum stories', 
-      details: err.message 
-    }); 
-  } 
+    res.json({ modules: nestedData });
+  } catch (err) {
+    console.error('[ADMIN API] Error in nestedStories:', err);
+    res.status(500).json({ error: 'Failed to fetch nested curriculum stories', details: err.message });
+  }
 };
 
 export const curriculum = async (_req, res) => {
-  console.log('[DEBUG] Calling curriculum V2 - NO order_index');
   try {
-    // Fetch modules
-    const modulesRes = await query('SELECT * FROM "module" ORDER BY module_name ASC');
-    
-    // Fetch chapters with module name
+    await ensureCurriculumIdsReady();
+    const modulesRes = await query(`SELECT * FROM ${T.module}`);
+
     const chaptersRes = await query(`
-      SELECT c.*, m.module_name 
-      FROM "chapter" c
-      LEFT JOIN "module" m ON c.module_id = m.module_id
-      ORDER BY c.chapter_name ASC
+      SELECT c.*, m.modulename,
+        (SELECT COUNT(*)::int FROM ${T.stories} s WHERE s.chapterid = c.chapterid) AS stories_count
+      FROM ${T.chapter} c
+      LEFT JOIN ${T.module} m ON c.moduleid = m.moduleid
+      ORDER BY c.chaptername ASC
     `);
-    
-    // Fetch stories with chapter and module names
+
     const storiesRes = await query(`
-      SELECT s.*, c.chapter_name, m.module_name
-      FROM "story" s
-      LEFT JOIN "chapter" c ON s.chapter_id = c.chapter_id
-      LEFT JOIN "module" m ON s.module_id = m.module_id
-      ORDER BY s.title ASC
+      SELECT s.*, c.chaptername, m.modulename, m.moduleid
+      FROM ${T.stories} s
+      LEFT JOIN ${T.chapter} c ON s.chapterid = c.chapterid
+      LEFT JOIN ${T.module} m ON c.moduleid = m.moduleid
+      ORDER BY s.storytitle ASC
     `);
-    
-    res.json({
-      modules: modulesRes.rows.map(m => ({
-        module_id: m.module_id,
-        title: m.module_name,
-        chaptersCount: parseIds(m.chapter_ids).length
-      })),
-      chapters: chaptersRes.rows.map(c => ({
-        chapter_id: c.chapter_id,
-        module_id: c.module_id,
-        module_name: c.module_name,
-        title: c.chapter_name,
-        storiesCount: parseIds(c.story_ids).length
-      })),
-      stories: storiesRes.rows.map(s => ({
-        story_id: s.story_id,
-        chapter_id: s.chapter_id,
-        chapter_name: s.chapter_name,
-        module_id: s.module_id,
-        module_name: s.module_name,
-        title: s.title,
-        description: s.description,
-        status: s.status || 'published',
-        tags: parseIds(s.tags)
-      }))
-    });
+
+    const chapterCounts = await query(`
+      SELECT moduleid, COUNT(*)::int AS count FROM ${T.chapter} GROUP BY moduleid
+    `);
+    const countByModule = Object.fromEntries(
+      chapterCounts.rows.map((r) => [r.moduleid, r.count]),
+    );
+
+    const modules = [...modulesRes.rows]
+      .sort(compareModuleRowsById)
+      .map((m) => mapModuleListRow(m, countByModule[m.moduleid] || 0));
+    const chapters = [...chaptersRes.rows]
+      .sort(compareChapterRowsById)
+      .map((c) => mapChapterListRow(c, c.stories_count));
+    const stories = [...storiesRes.rows].sort(compareStoryRowsById).map(mapStoryListRow);
+
+    res.json({ modules, chapters, stories });
   } catch (err) {
     console.error('[ADMIN API] Error in curriculum:', err);
     res.status(500).json({ error: 'Failed to fetch curriculum data', details: err.message });
@@ -360,11 +327,7 @@ export const modules = {
   create: async (req, res) => {
     try {
       const { title } = req.body;
-      const id = `mod-${Date.now()}`;
-      await query(
-        'INSERT INTO "module" (module_id, module_name, chapter_ids) VALUES ($1, $2, $3)',
-        [id, title, '[]']
-      );
+      const id = await insertModule({ title });
       res.status(201).json({ ok: true, id });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -374,8 +337,8 @@ export const modules = {
     try {
       const { title } = req.body;
       await query(
-        'UPDATE "module" SET module_name = $1 WHERE module_id = $2',
-        [title, req.params.id]
+        `UPDATE ${T.module} SET modulename = $1 WHERE moduleid = $2`,
+        [title, req.params.id],
       );
       res.json({ ok: true });
     } catch (err) {
@@ -384,35 +347,26 @@ export const modules = {
   },
   remove: async (req, res) => {
     try {
-      const chaptersCount = await query('SELECT COUNT(*) FROM "chapter" WHERE module_id = $1', [req.params.id]);
-      if (parseInt(chaptersCount.rows[0].count) > 0) {
+      const chaptersCount = await query(
+        `SELECT COUNT(*)::int AS count FROM ${T.chapter} WHERE moduleid = $1`,
+        [req.params.id],
+      );
+      if ((chaptersCount.rows[0]?.count ?? 0) > 0) {
         return res.status(400).json({ error: 'Cannot delete module that has chapters.' });
       }
-      await query('DELETE FROM "module" WHERE module_id = $1', [req.params.id]);
+      await query(`DELETE FROM ${T.module} WHERE moduleid = $1`, [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 };
 
 export const chapters = {
   create: async (req, res) => {
     try {
       const { title, module_id } = req.body;
-      const id = `ch-${Date.now()}`;
-      await query(
-        'INSERT INTO "chapter" (chapter_id, chapter_name, module_id, story_ids) VALUES ($1, $2, $3, $4)',
-        [id, title, module_id, '[]']
-      );
-      
-      const modRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [module_id]);
-      if (modRes.rows.length > 0) {
-        const chapterIds = parseIds(modRes.rows[0].chapter_ids);
-        chapterIds.push(id);
-        await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(chapterIds), module_id]);
-      }
-      
+      const id = await insertChapter({ title, moduleId: module_id });
       res.status(201).json({ ok: true, id });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -421,29 +375,10 @@ export const chapters = {
   update: async (req, res) => {
     try {
       const { title, module_id } = req.body;
-      const oldChapter = await query('SELECT module_id FROM "chapter" WHERE chapter_id = $1', [req.params.id]);
-      const oldModuleId = oldChapter.rows[0]?.module_id;
-
       await query(
-        'UPDATE "chapter" SET chapter_name = $1, module_id = $2 WHERE chapter_id = $3',
-        [title, module_id, req.params.id]
+        `UPDATE ${T.chapter} SET chaptername = $1, moduleid = $2 WHERE chapterid = $3`,
+        [title, module_id, req.params.id],
       );
-
-      if (oldModuleId && oldModuleId !== module_id) {
-        const oldModRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [oldModuleId]);
-        if (oldModRes.rows.length > 0) {
-          const oldIds = parseIds(oldModRes.rows[0].chapter_ids).filter(id => id !== req.params.id);
-          await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(oldIds), oldModuleId]);
-        }
-        
-        const newModRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [module_id]);
-        if (newModRes.rows.length > 0) {
-          const newIds = parseIds(newModRes.rows[0].chapter_ids);
-          if (!newIds.includes(req.params.id)) newIds.push(req.params.id);
-          await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(newIds), module_id]);
-        }
-      }
-
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -451,95 +386,106 @@ export const chapters = {
   },
   remove: async (req, res) => {
     try {
-      const storiesCount = await query('SELECT COUNT(*) FROM "story" WHERE chapter_id = $1', [req.params.id]);
-      if (parseInt(storiesCount.rows[0].count) > 0) {
+      const storiesCount = await query(
+        `SELECT COUNT(*)::int AS count FROM ${T.stories} WHERE chapterid = $1`,
+        [req.params.id],
+      );
+      if ((storiesCount.rows[0]?.count ?? 0) > 0) {
         return res.status(400).json({ error: 'Cannot delete chapter that has stories.' });
       }
-
-      const chapter = await query('SELECT module_id FROM "chapter" WHERE chapter_id = $1', [req.params.id]);
-      const moduleId = chapter.rows[0]?.module_id;
-      if (moduleId) {
-        const modRes = await query('SELECT chapter_ids FROM "module" WHERE module_id = $1', [moduleId]);
-        if (modRes.rows.length > 0) {
-          const ids = parseIds(modRes.rows[0].chapter_ids).filter(id => id !== req.params.id);
-          await query('UPDATE "module" SET chapter_ids = $1 WHERE module_id = $2', [JSON.stringify(ids), moduleId]);
-        }
-      }
-
-      await query('DELETE FROM "chapter" WHERE chapter_id = $1', [req.params.id]);
+      await query(`DELETE FROM ${T.chapter} WHERE chapterid = $1`, [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 };
+
+async function insertStoryWithPrinciple({ storyId, title, description, chapterId, text, principleId }) {
+  await query(
+    `INSERT INTO ${T.stories} (storyid, storytitle, storydescription, storytext, chapterid)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [storyId, title, description || '', text, chapterId],
+  );
+  await query(
+    `INSERT INTO ${T.storyPrincipleMapping} (storyid, principleid) VALUES ($1, $2)
+     ON CONFLICT (storyid, principleid) DO NOTHING`,
+    [storyId, principleId],
+  );
+}
 
 export const stories = {
   list: async (_req, res) => {
     try {
-      const result = await query('SELECT * FROM "story" ORDER BY title ASC');
-      res.json(result.rows);
+      const result = await query(`SELECT * FROM ${T.stories} ORDER BY storytitle ASC`);
+      res.json(result.rows.map((r) => ({ ...r, story_id: r.storyid, title: r.storytitle })));
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   },
   create: async (req, res) => {
     try {
-      const { title, description, chapter_id, module_id, status, tags } = req.body;
-      const id = `st-${Date.now()}`;
-      
-      let finalModuleId = module_id;
-      if (!finalModuleId && chapter_id) {
-        const chapterRes = await query('SELECT module_id FROM "chapter" WHERE chapter_id = $1', [chapter_id]);
-        finalModuleId = chapterRes.rows[0]?.module_id;
+      await ensureCurriculumIdsReady();
+      const { title, description, chapter_id, messages } = req.body;
+      const normalizedMessages = normalizeStoryMessages(messages);
+      if (!normalizedMessages.length) {
+        return res.status(400).json({ error: 'At least one message with a principle is required.' });
+      }
+      if (!chapter_id) {
+        return res.status(400).json({ error: 'Chapter is required.' });
       }
 
-      await query(
-        'INSERT INTO "story" (story_id, title, description, chapter_id, module_id, status, tags) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [id, title, description, chapter_id, finalModuleId, status || 'published', JSON.stringify(tags || [])]
-      );
-
-      if (chapter_id) {
-        const chapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [chapter_id]);
-        if (chapRes.rows.length > 0) {
-          const storyIds = parseIds(chapRes.rows[0].story_ids);
-          storyIds.push(id);
-          await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(storyIds), chapter_id]);
-        }
+      const createdIds = [];
+      for (const msg of normalizedMessages) {
+        const storyId = await allocateNextStoryId();
+        await insertStoryWithPrinciple({
+          storyId,
+          title,
+          description: description || '',
+          chapterId: chapter_id,
+          text: msg.text,
+          principleId: msg.principleId,
+        });
+        createdIds.push(storyId);
       }
 
-      res.status(201).json({ ok: true, id });
+      res.status(201).json({ ok: true, id: createdIds[0], ids: createdIds });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   },
   update: async (req, res) => {
     try {
-      const { title, description, chapter_id, module_id, status, tags } = req.body;
-      
-      const oldStory = await query('SELECT chapter_id FROM "story" WHERE story_id = $1', [req.params.id]);
-      const oldChapterId = oldStory.rows[0]?.chapter_id;
+      const { title, description, chapter_id, messages } = req.body;
+      const storyId = req.params.id;
 
-      await query(
-        'UPDATE "story" SET title = $1, description = $2, chapter_id = $3, module_id = $4, status = $5, tags = $6 WHERE story_id = $7',
-        [title, description, chapter_id, module_id, status, JSON.stringify(tags || []), req.params.id]
-      );
+      if (title !== undefined || description !== undefined || chapter_id !== undefined) {
+        await query(
+          `UPDATE ${T.stories}
+           SET storytitle = COALESCE($1, storytitle),
+               storydescription = COALESCE($2, storydescription),
+               chapterid = COALESCE($3, chapterid)
+           WHERE storyid = $4`,
+          [title, description ?? null, chapter_id ?? null, storyId],
+        );
+      }
 
-      if (oldChapterId && oldChapterId !== chapter_id) {
-        const oldChapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [oldChapterId]);
-        if (oldChapRes.rows.length > 0) {
-          const oldIds = parseIds(oldChapRes.rows[0].story_ids).filter(id => id !== req.params.id);
-          await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(oldIds), oldChapterId]);
+      if (messages !== undefined) {
+        const normalizedMessages = normalizeStoryMessages(messages);
+        if (!normalizedMessages.length) {
+          return res.status(400).json({ error: 'At least one message with a principle is required.' });
         }
-        
-        if (chapter_id) {
-          const newChapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [chapter_id]);
-          if (newChapRes.rows.length > 0) {
-            const newIds = parseIds(newChapRes.rows[0].story_ids);
-            if (!newIds.includes(req.params.id)) newIds.push(req.params.id);
-            await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(newIds), chapter_id]);
-          }
-        }
+        const msg = normalizedMessages[0];
+        await query(
+          `UPDATE ${T.stories} SET storytext = $1 WHERE storyid = $2`,
+          [msg.text, storyId],
+        );
+        await query(`DELETE FROM ${T.storyPrincipleMapping} WHERE storyid = $1`, [storyId]);
+        await query(
+          `INSERT INTO ${T.storyPrincipleMapping} (storyid, principleid) VALUES ($1, $2)
+           ON CONFLICT (storyid, principleid) DO NOTHING`,
+          [storyId, msg.principleId],
+        );
       }
 
       res.json({ ok: true });
@@ -549,69 +495,37 @@ export const stories = {
   },
   remove: async (req, res) => {
     try {
-      const story = await query('SELECT chapter_id FROM "story" WHERE story_id = $1', [req.params.id]);
-      const chapterId = story.rows[0]?.chapter_id;
-      if (chapterId) {
-        const chapRes = await query('SELECT story_ids FROM "chapter" WHERE chapter_id = $1', [chapterId]);
-        if (chapRes.rows.length > 0) {
-          const ids = parseIds(chapRes.rows[0].story_ids).filter(id => id !== req.params.id);
-          await query('UPDATE "chapter" SET story_ids = $1 WHERE chapter_id = $2', [JSON.stringify(ids), chapterId]);
-        }
-      }
-
-      await query('DELETE FROM "story" WHERE story_id = $1', [req.params.id]);
+      await query(`DELETE FROM ${T.storyPrincipleMapping} WHERE storyid = $1`, [req.params.id]);
+      await query(`DELETE FROM ${T.stories} WHERE storyid = $1`, [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   },
   updateStatus: async (req, res) => {
-    try {
-      const { status } = req.body;
-      if (!['published', 'on_hold'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid status' });
-      }
-      const result = await query(
-        'UPDATE public.story SET status = $1 WHERE story_id = $2 RETURNING *',
-        [status, req.params.id]
-      );
-      res.json(result.rows[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  }
+    res.json({ storyid: req.params.id, status: req.body?.status || 'published' });
+  },
 };
 
 export const storyMappings = {
   updateStatus: async (req, res) => {
+    res.json({ ok: true, id: req.params.id, status: req.body?.status || 'published' });
+  },
+  update: async (req, res) => {
     try {
-      const { status } = req.body;
-      const isdone = status === 'published';
+      const { storyText } = req.body;
+      const { storyId } = parseMappingKey(req.params.id);
+      if (!storyId) return res.status(400).json({ error: 'Invalid mapping id' });
+
       const result = await query(
-        'UPDATE public.story_mapping SET isdone = $1 WHERE mapping_id = $2 RETURNING *',
-        [isdone, req.params.id]
+        `UPDATE ${T.stories} SET storytext = COALESCE($1, storytext) WHERE storyid = $2 RETURNING *`,
+        [storyText, storyId],
       );
-      res.json(result.rows[0]);
+      res.json(result.rows[0] || { ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   },
-  update: async (req, res) => {
-    try {
-      const { storyText, status } = req.body;
-      let isdone = null;
-      if (status !== undefined) {
-        isdone = status === 'published';
-      }
-      const result = await query(
-        'UPDATE public.story_mapping SET story_text = COALESCE($1, story_text), isdone = CASE WHEN $2::boolean IS NULL THEN isdone ELSE $2::boolean END WHERE mapping_id = $3 RETURNING *',
-        [storyText, isdone, req.params.id]
-      );
-      res.json(result.rows[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  }
 };
 
 export const players = {
@@ -815,9 +729,19 @@ export const principles = {
   list: async (_req, res) => {
     try {
       console.log('[ADMIN API] Fetching principles from DB...');
-      const result = await query('SELECT id, name FROM public.principles ORDER BY name ASC');
-      console.log(`[ADMIN API] Principles found: ${result.rows.length}`);
-      res.json(result.rows);
+      await ensureCurriculumIdsReady();
+      const result = await query(
+        `SELECT principleid AS id, principlename AS name FROM ${T.principles}`,
+      );
+      const rows = [...result.rows]
+        .sort(comparePrincipleRowsById)
+        .map((row) => ({
+          id: row.id,
+          principleId: row.id,
+          name: row.name,
+        }));
+      console.log(`[ADMIN API] Principles found: ${rows.length}`, rows.slice(0, 5));
+      res.json(rows);
     } catch (err) {
       console.error('[ADMIN API] Error fetching principles:', err);
       res.status(500).json({ error: err.message });
@@ -826,22 +750,21 @@ export const principles = {
   create: async (req, res) => {
     try {
       const { name } = req.body;
-      const id = `principle-${Date.now()}`;
-      const result = await query(
-        'INSERT INTO public.principles (id, name) VALUES ($1, $2) RETURNING id, name',
-        [id, name]
-      );
-      res.status(201).json(result.rows[0]);
+      const row = await insertPrincipleWithSequentialId(name);
+      console.log(`[ADMIN API] Created principle ${row.id}: ${row.name}`);
+      res.status(201).json({ id: row.id, principleId: row.id, name: row.name });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('[ADMIN API] principles.create:', err.message);
+      res.status(err.message === 'Principle name is required' ? 400 : 500).json({ error: err.message });
     }
   },
   update: async (req, res) => {
     try {
       const { name } = req.body;
       const result = await query(
-        'UPDATE public.principles SET name = $1 WHERE id = $2 RETURNING id, name',
-        [name, req.params.id]
+        `UPDATE ${T.principles} SET principlename = $1 WHERE principleid = $2
+         RETURNING principleid AS id, principlename AS name`,
+        [name, req.params.id],
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -850,108 +773,153 @@ export const principles = {
   },
   remove: async (req, res) => {
     try {
-      await query('DELETE FROM public.principles WHERE id = $1', [req.params.id]);
+      await query(`DELETE FROM ${T.storyPrincipleMapping} WHERE principleid = $1`, [req.params.id]);
+      await query(`DELETE FROM ${T.principles} WHERE principleid = $1`, [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   }
 };
+/** Legacy `/admin/positions` — backed by `principles` table (database.sql). */
+function mapPrincipleToPositionRow(row) {
+  return {
+    id: row.id,
+    principle: row.name,
+    fen_with_move: '',
+    puzzle_list: '[]',
+    isdone: false,
+  };
+}
+
 export const positions = {
   list: async (_req, res) => {
     try {
-      const result = await query('SELECT principle_id as id, principle, fen_with_move, puzzle_list, isdone FROM public.principle_position ORDER BY principle_id ASC');
-      res.json(result.rows);
+      const result = await query(
+        `SELECT principleid AS id, principlename AS name FROM ${T.principles}`,
+      );
+      res.json([...result.rows].sort(comparePrincipleRowsById).map(mapPrincipleToPositionRow));
     } catch (err) {
+      console.error('[ADMIN API] positions.list:', err.message);
       res.status(500).json({ error: err.message });
     }
   },
   create: async (req, res) => {
     try {
-      const { id, principle, fen_with_move, puzzle_list, isdone } = req.body;
-      const result = await query(
-        'INSERT INTO public.principle_position (principle_id, principle, fen_with_move, puzzle_list, isdone) VALUES ($1, $2, $3, $4, $5) RETURNING principle_id as id, principle, fen_with_move, puzzle_list, isdone',
-        [id, principle, fen_with_move, puzzle_list, isdone || false]
-      );
-      res.status(201).json(result.rows[0]);
+      const name = String(req.body.principle ?? req.body.name ?? '').trim();
+      if (!name) return res.status(400).json({ error: 'Principle name is required.' });
+      const row = await insertPrincipleWithSequentialId(name);
+      res.status(201).json(mapPrincipleToPositionRow(row));
     } catch (err) {
+      console.error('[ADMIN API] positions.create:', err.message);
       res.status(500).json({ error: err.message });
     }
   },
   update: async (req, res) => {
     try {
-      const { principle, fen_with_move, puzzle_list, isdone } = req.body;
+      const name = String(req.body.principle ?? req.body.name ?? '').trim();
+      if (!name) return res.status(400).json({ error: 'Principle name is required.' });
       const result = await query(
-        'UPDATE public.principle_position SET principle = $1, fen_with_move = $2, puzzle_list = $3, isdone = $4 WHERE principle_id = $5 RETURNING principle_id as id, principle, fen_with_move, puzzle_list, isdone',
-        [principle, fen_with_move, puzzle_list, isdone, req.params.id]
+        `UPDATE ${T.principles} SET principlename = $1 WHERE principleid = $2
+         RETURNING principleid AS id, principlename AS name`,
+        [name, req.params.id],
       );
-      res.json(result.rows[0]);
+      if (!result.rows.length) return res.status(404).json({ error: 'Principle not found' });
+      res.json(mapPrincipleToPositionRow(result.rows[0]));
     } catch (err) {
+      console.error('[ADMIN API] positions.update:', err.message);
       res.status(500).json({ error: err.message });
     }
   },
   remove: async (req, res) => {
     try {
-      await query('DELETE FROM public.principle_position WHERE principle_id = $1', [req.params.id]);
+      await query(`DELETE FROM ${T.storyPrincipleMapping} WHERE principleid = $1`, [req.params.id]);
+      await query(`DELETE FROM ${T.principles} WHERE principleid = $1`, [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
+      console.error('[ADMIN API] positions.remove:', err.message);
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 };
 
 export const puzzles = {
   list: async (_req, res) => {
     try {
+      const schema = await getDbSchema();
+      if (!schema.hasChessPuzzle) {
+        console.warn('[ADMIN API] puzzles.list: chess_puzzle table not in DB — returning []');
+        return res.json([]);
+      }
+      const joinPrinciples = schema.hasPrinciples
+        ? `LEFT JOIN ${T.principles} p ON p.principleid = cp.principle_id::text`
+        : '';
+      const principleSelect = schema.hasPrinciples ? 'p.principlename AS principle_name' : 'NULL AS principle_name';
       const result = await query(`
-        SELECT 
-          cp.chess_puzzle_id as id, 
-          cp.principle_id, 
-          cp.fen_with_move, 
-          cp.isdone, 
+        SELECT
+          cp.chess_puzzle_id AS id,
+          cp.principle_id,
+          cp.fen_with_move,
+          cp.isdone,
           cp.answer,
-          pp.principle as principle_name
+          ${principleSelect}
         FROM public.chess_puzzle cp
-        LEFT JOIN public.principle_position pp ON pp.principle_id = cp.principle_id
+        ${joinPrinciples}
         ORDER BY cp.chess_puzzle_id ASC
       `);
       res.json(result.rows);
     } catch (err) {
+      console.error('[ADMIN API] puzzles.list:', err.message);
       res.status(500).json({ error: err.message });
     }
   },
   create: async (req, res) => {
     try {
+      const schema = await getDbSchema();
+      if (!schema.hasChessPuzzle) {
+        return res.status(501).json({ error: 'chess_puzzle table is not configured in this database.' });
+      }
       const { id, principle_id, fen_with_move, isdone, answer } = req.body;
       const result = await query(
         'INSERT INTO public.chess_puzzle (chess_puzzle_id, principle_id, fen_with_move, isdone, answer) VALUES ($1, $2, $3, $4, $5) RETURNING chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer',
-        [id, principle_id, fen_with_move, isdone || false, answer]
+        [id, principle_id, fen_with_move, isdone || false, answer],
       );
       res.status(201).json(result.rows[0]);
     } catch (err) {
+      console.error('[ADMIN API] puzzles.create:', err.message);
       res.status(500).json({ error: err.message });
     }
   },
   update: async (req, res) => {
     try {
+      const schema = await getDbSchema();
+      if (!schema.hasChessPuzzle) {
+        return res.status(501).json({ error: 'chess_puzzle table is not configured in this database.' });
+      }
       const { principle_id, fen_with_move, isdone, answer } = req.body;
       const result = await query(
         'UPDATE public.chess_puzzle SET principle_id = $1, fen_with_move = $2, isdone = $3, answer = $4 WHERE chess_puzzle_id = $5 RETURNING chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer',
-        [principle_id, fen_with_move, isdone, answer, req.params.id]
+        [principle_id, fen_with_move, isdone, answer, req.params.id],
       );
       res.json(result.rows[0]);
     } catch (err) {
+      console.error('[ADMIN API] puzzles.update:', err.message);
       res.status(500).json({ error: err.message });
     }
   },
   remove: async (req, res) => {
     try {
+      const schema = await getDbSchema();
+      if (!schema.hasChessPuzzle) {
+        return res.status(501).json({ error: 'chess_puzzle table is not configured in this database.' });
+      }
       await query('DELETE FROM public.chess_puzzle WHERE chess_puzzle_id = $1', [req.params.id]);
       res.json({ ok: true });
     } catch (err) {
+      console.error('[ADMIN API] puzzles.remove:', err.message);
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 };
 export const classes = crud('classes');
 export const achievements = crud('achievements');

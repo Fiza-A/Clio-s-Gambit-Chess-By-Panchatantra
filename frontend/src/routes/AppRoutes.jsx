@@ -10,7 +10,6 @@ import AdminDashboard from '../pages/AdminDashboard.jsx';
 import AchievementsPage from '../pages/AchievementsPage.jsx';
 import {
   AdminAchievements,
-  AdminAnalytics,
   AdminClasses,
   AdminCrudPage,
   AdminCurriculum,
@@ -41,14 +40,13 @@ import {
   StudentClasses,
   StudentChapterStories,
   StudentModuleChapters,
-  StudentPrincipleDetail,
-  StudentPrinciples,
   StudentPuzzleDetail,
   StudentPuzzles,
   StudentSettings,
   StudentStories,
   StudentStoryDetail,
 } from '../pages/FunctionalPages.jsx';
+import StudentStoryReader from '../pages/StudentStoryReader.jsx';
 
 export default function AppRoutes() {
   return (
@@ -64,9 +62,10 @@ export default function AppRoutes() {
         <Route path="/student/stories" element={<StudentStories />} />
         <Route path="/student/stories/module/:moduleId/chapter/:chapterId" element={<StudentChapterStories />} />
         <Route path="/student/stories/module/:moduleId" element={<StudentModuleChapters />} />
+        <Route path="/student/stories/:storyId/read" element={<StudentStoryReader />} />
         <Route path="/student/stories/:storyId" element={<StudentStoryDetail />} />
-        <Route path="/student/principles" element={<StudentPrinciples />} />
-        <Route path="/student/principles/:principleId" element={<StudentPrincipleDetail />} />
+        <Route path="/student/principles" element={<Navigate to="/student/dashboard" replace />} />
+        <Route path="/student/principles/:principleId" element={<Navigate to="/student/dashboard" replace />} />
         <Route path="/student/puzzles" element={<StudentPuzzles />} />
         <Route path="/student/puzzles/:puzzleId" element={<StudentPuzzleDetail />} />
         <Route path="/student/achievements" element={<StudentAchievements />} />
@@ -105,7 +104,7 @@ export default function AppRoutes() {
         <Route path="/admin/puzzles" element={<AdminPuzzles />} />
         <Route path="/admin/principles" element={<AdminPrinciples />} />
         <Route path="/admin/classes" element={<AdminClasses />} />
-        <Route path="/admin/analytics" element={<AdminAnalytics />} />
+        <Route path="/admin/analytics" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/admin/achievement-catalog" element={<AdminAchievements />} />
         <Route path="/admin/achievements/all-games" element={<AchievementsPage view="all" />} />
         <Route path="/admin/achievements/wins-in-row/sacrifices" element={<AchievementsPage view="sacrifices" />} />

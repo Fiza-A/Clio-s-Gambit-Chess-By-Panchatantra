@@ -8,7 +8,13 @@ export const studentApi = {
   getModuleChapters: (moduleId) => api.get(`/student/story-modules/${moduleId}/chapters`).then((r) => r.data),
   getChapterStories: (moduleId, chapterId) => api.get(`/student/story-modules/${moduleId}/chapters/${chapterId}/stories`).then((r) => r.data),
   getStoryDetail: (storyId) => api.get(`/student/stories/${storyId}`).then((r) => r.data),
-  updateStoryProgress: (storyId, progress) => api.patch(`/student/stories/${storyId}/progress`, { progress }).then((r) => r.data),
+  updateStoryProgress: (storyId, progressOrPayload) => {
+    const body =
+      typeof progressOrPayload === 'object' && progressOrPayload !== null
+        ? progressOrPayload
+        : { progress: progressOrPayload };
+    return api.patch(`/student/stories/${storyId}/progress`, body).then((r) => r.data);
+  },
   updateStory: (id, payload) => api.patch(`/student/stories/${id}/progress`, payload).then((r) => r.data),
   learnPrinciple: (id, payload) => api.patch(`/student/principles/${id}/learned`, payload).then((r) => r.data),
   submitPuzzle: (id, payload) => api.post(`/student/puzzles/${id}/submit`, payload).then((r) => r.data),

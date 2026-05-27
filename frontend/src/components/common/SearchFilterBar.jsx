@@ -27,6 +27,7 @@ export default function SearchFilterBar({
   filters = ['all'],
   showFilter = true,
   variant = 'default',
+  placeholder = 'Search…',
 }) {
   const isAdmin = variant === 'admin';
 
@@ -36,7 +37,7 @@ export default function SearchFilterBar({
         flex={{ md: 1 }}
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search users by name, email, or role…"
+        placeholder={placeholder}
         aria-label="Search records"
         {...(isAdmin ? ADMIN_CONTROL_PROPS : { bg: 'white' })}
       />

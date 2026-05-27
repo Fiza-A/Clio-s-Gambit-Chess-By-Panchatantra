@@ -9,7 +9,6 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import MessageIcon from '@mui/icons-material/Message';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import PsychologyIcon from '@mui/icons-material/Psychology';
 import SecurityIcon from '@mui/icons-material/Security';
 import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
@@ -26,7 +25,7 @@ export const roleConfig = {
     nav: [
       ['Dashboard', DashboardIcon, '/admin/dashboard'], ['Users', PeopleAltIcon, '/admin/users'], ['Player Details', SportsEsportsIcon, '/admin/games-details'], ['Curriculum', MenuBookIcon, '/admin/curriculum'],
       ['Chess Puzzles', ExtensionIcon, '/admin/puzzles'],
-      ['Classes', CalendarMonthIcon, '/admin/classes'], ['Analytics', AnalyticsIcon, '/admin/analytics'], ['Achievements', EmojiEventsIcon, '/admin/achievements'],
+      ['Classes', CalendarMonthIcon, '/admin/classes'], ['Achievements', EmojiEventsIcon, '/admin/achievements'],
       ['Achievement catalog', ListAltIcon, '/admin/achievement-catalog'],
       ['Reports', AssignmentIcon, '/admin/reports'], ['Roles & Permissions', SecurityIcon, '/admin/roles-permissions'], ['Settings', SettingsIcon, '/admin/settings'],
     ],
@@ -46,7 +45,7 @@ export const roleConfig = {
     quote: 'Strategy without tactics is the slowest route to victory. Tactics without strategy is the noise before defeat.',
     quoteBy: 'Sun Tzu',
     nav: [
-      ['Dashboard', DashboardIcon, '/student/dashboard'], ['Stories', AutoStoriesIcon, '/student/stories'], ['Principles', PsychologyIcon, '/student/principles'],
+      ['Dashboard', DashboardIcon, '/student/dashboard'], ['Stories', AutoStoriesIcon, '/student/stories'],
       ['Puzzles', ExtensionIcon, '/student/puzzles'], ['Achievements', EmojiEventsIcon, '/student/achievements'], ['Analytics', AnalyticsIcon, '/student/analytics'],
       ['Classes', CalendarMonthIcon, '/student/classes'], ['Strategic Profile', PersonIcon, '/student/strategic-profile'],
     ],

@@ -1,14 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { buildReport, getCollection, getDashboard, recordAction } from './data/database.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { buildReport, getCollection, getDashboard, recordAction, verifyDatabaseConnection } from './data/database.js';
 import authRoutes from './routes/authRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import coachRoutes from './routes/coachRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import chessComRoutes from './routes/chessComRoutes.js';
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const app = express();
 
@@ -102,10 +105,25 @@ app.post('/api/actions', (req, res) => {
   res.status(201).json({ ok: true, message: `${entry.label || entry.action} completed`, entry });
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'chess-by-panchatantra' }));
+app.get('/api/health', async (_req, res) => {
+  const db = await verifyDatabaseConnection();
+  res.json({
+    ok: true,
+    service: 'chess-by-panchatantra',
+    port,
+    database: db,
+  });
+});
 
-const server = app.listen(port, () => {
+const server = app.listen(port, async () => {
   console.log(`Chess by Panchatantra API running on http://localhost:${port}`);
+  const db = await verifyDatabaseConnection();
+  if (db.ok) {
+    console.log('[DATABASE] Connected:', db.database, '| modules:', db.counts?.modules, 'chapters:', db.counts?.chapters, 'stories:', db.counts?.stories, 'users:', db.counts?.users);
+  } else {
+    console.error('[DATABASE] Connection check FAILED:', db.error);
+    console.error('[DATABASE] Fix backend/.env (DATABASE_URL) and restart. Data APIs will not work until this is resolved.');
+  }
 });
 
 server.on('error', (err) => {

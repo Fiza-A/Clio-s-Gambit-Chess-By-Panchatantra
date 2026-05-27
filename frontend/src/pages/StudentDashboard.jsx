@@ -81,7 +81,7 @@ export default function StudentDashboard() {
             </DashboardCard>
           </Grid>
 
-          <Box mt={5} onClick={() => navigate('/student/principles')} cursor="pointer"><QuoteCard quote="Master the mind, and the moves will follow." by="Chess by Panchatantra" banner /></Box>
+          <Box mt={5}><QuoteCard quote="Master the mind, and the moves will follow." by="Chess by Panchatantra" banner /></Box>
         </>
       )}
     </DashboardLayout>

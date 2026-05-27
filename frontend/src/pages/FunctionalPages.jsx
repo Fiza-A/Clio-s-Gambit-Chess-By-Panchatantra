@@ -8,6 +8,7 @@ import DataTable from '../components/common/DataTable.jsx';
 import EmptyState from '../components/common/EmptyState.jsx';
 import ErrorState from '../components/common/ErrorState.jsx';
 import FormModal from '../components/common/FormModal.jsx';
+import StoryFormModal from '../components/admin/StoryFormModal.jsx';
 import LoadingState from '../components/common/LoadingState.jsx';
 import SearchFilterBar from '../components/common/SearchFilterBar.jsx';
 import LineAreaChart from '../components/charts/LineAreaChart.jsx';
@@ -19,15 +20,21 @@ import { adminApi } from '../api/adminApi.js';
 import { chessComApi } from '../api/chessComApi.js';
 import { downloadTextFile } from '../utils/download.js';
 import { getValue, titleCase } from '../utils/formatters.js';
+import { normalizePrinciplesList } from '../utils/principles.js';
 
 function useLoad(loader, deps = []) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const reload = async () => {
+  const [loading, setLoading] = useState(true);
+  const loaderRef = useRef(loader);
+  loaderRef.current = loader;
+
+  const reload = useCallback(async () => {
     try {
       setError('');
-      console.log(`[useLoad] Loading data for ${loader.toString().slice(0, 100)}...`);
-      const next = await loader();
+      setLoading(true);
+      console.log(`[useLoad] Loading data for ${loaderRef.current?.toString?.().slice(0, 100) ?? 'loader'}...`);
+      const next = await loaderRef.current();
       console.log('[useLoad] Data received:', next);
       setData(next);
       return next;
@@ -35,10 +42,16 @@ function useLoad(loader, deps = []) {
       console.error('[useLoad] Error:', err);
       setError(err.message);
       return null;
+    } finally {
+      setLoading(false);
     }
-  };
-  useEffect(() => { reload(); }, deps);
-  return { data, error, setData, reload };
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, deps);
+
+  return { data, error, setData, reload, loading };
 }
 
 function PageShell({ role, title, subtitle, children, dashboardHeading = false }) {
@@ -72,8 +85,10 @@ function filterItems(items, search, filter) {
   });
 }
 
-function CardGrid({ items, onOpen, extra }) {
-  if (!items.length) return <EmptyState />;
+function CardGrid({ items, onOpen, extra, emptyTitle, emptyMessage }) {
+  if (!items.length) {
+    return <EmptyState title={emptyTitle || 'No records found'} message={emptyMessage || 'Try changing filters or adding a new item.'} />;
+  }
   return (
     <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
       {items.map((item) => (
@@ -114,14 +129,27 @@ export function StudentStories() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   if (error) return <PageShell role="student" title="Stories"><ErrorState message={error} /></PageShell>;
-  const items = (data || []).filter((module) => {
+  const allModules = data || [];
+  const items = allModules.filter((module) => {
     const text = `${module.title} ${module.subtitle} ${module.level}`.toLowerCase();
     return text.includes(search.toLowerCase()) && (filter === 'all' || module.level === filter);
   });
+  const emptyModules = !allModules.length;
   return (
     <PageShell role="student" title="Stories" subtitle="Explore Panchatantra wisdom through chess modules.">
       {!data ? <LoadingState /> : <>
         <SearchFilterBar search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} filters={['all','Beginner','Intermediate','Advanced']} />
+        {emptyModules ? (
+          <EmptyState
+            title="No modules yet"
+            message="Story modules have not been added yet. Check back later or ask your coach to publish curriculum content."
+          />
+        ) : !items.length ? (
+          <EmptyState
+            title="No modules match your search"
+            message="Try a different search term or set the level filter to All."
+          />
+        ) : (
         <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
           {items.map((module) => (
             <DashboardCard key={module.id} cursor="pointer" onClick={() => navigate(`/student/stories/module/${module.id}`)}>
@@ -137,7 +165,7 @@ export function StudentStories() {
             </DashboardCard>
           ))}
         </SimpleGrid>
-        {!items.length && <EmptyState title="No modules found" />}
+        )}
       </>}
     </PageShell>
   );
@@ -150,14 +178,30 @@ export function StudentModuleChapters() {
   const [search, setSearch] = useState('');
   if (error) return <PageShell role="student" title="Stories"><ErrorState message={error} /></PageShell>;
   if (!data) return <PageShell role="student" title="Stories"><LoadingState /></PageShell>;
-  const chapters = data.chapters.filter((chapter) => `${chapter.title} ${chapter.subtitle}`.toLowerCase().includes(search.toLowerCase()));
+  const moduleInfo = data.module ?? data;
+  const allChapters = data.chapters ?? [];
+  const chapters = allChapters.filter((chapter) => `${chapter.title} ${chapter.subtitle}`.toLowerCase().includes(search.toLowerCase()));
   const status = (progress) => progress >= 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started';
+  const emptyChapters = !allChapters.length;
   return (
-    <PageShell role="student" title={data.title} subtitle={data.subtitle}>
-      <Text mb={3} color="brand.muted" fontSize="13px">Student / Stories / {data.title}</Text>
+    <PageShell role="student" title={moduleInfo.title || 'Module'} subtitle={moduleInfo.subtitle}>
+      <Text mb={3} color="brand.muted" fontSize="13px">Student / Stories / {moduleInfo.title || 'Module'}</Text>
       <Button mb={4} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => navigate('/student/stories')}>Back to Modules</Button>
-      <DashboardCard mb={5}><Text>{data.description}</Text><Text mt={2}>{data.progress}% complete · {data.totalChapters} chapters · {data.totalStories} stories</Text></DashboardCard>
+      <DashboardCard mb={5}><Text>{moduleInfo.description}</Text><Text mt={2}>{moduleInfo.progress ?? 0}% complete · {moduleInfo.totalChapters ?? allChapters.length} chapters · {moduleInfo.totalStories ?? (data.stories?.length ?? 0)} stories</Text></DashboardCard>
+      {emptyChapters ? (
+        <EmptyState
+          title="No chapters in this module"
+          message="This module does not have any chapters yet. Check back later once your coach adds content."
+        />
+      ) : (
+      <>
       <Input mb={4} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search chapters" bg="white" h="42px" borderColor="rgba(214,168,79,0.25)" />
+      {!chapters.length ? (
+        <EmptyState
+          title="No chapters match your search"
+          message="Try a different search term."
+        />
+      ) : (
       <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
         {chapters.map((chapter) => (
           <DashboardCard key={chapter.id} cursor="pointer" minH="325px" display="flex" flexDirection="column" onClick={() => navigate(`/student/stories/module/${moduleId}/chapter/${chapter.id}`)}>
@@ -177,7 +221,9 @@ export function StudentModuleChapters() {
           </DashboardCard>
         ))}
       </SimpleGrid>
-      {!chapters.length && <EmptyState title="No chapters found" />}
+      )}
+      </>
+      )}
     </PageShell>
   );
 }
@@ -190,17 +236,32 @@ export function StudentChapterStories() {
   const [filter, setFilter] = useState('all');
   if (error) return <PageShell role="student" title="Stories"><ErrorState message={error} /></PageShell>;
   if (!data) return <PageShell role="student" title="Stories"><LoadingState /></PageShell>;
-  const stories = data.stories.filter((story) => {
-    const text = `${story.title} ${story.tags.join(' ')}`.toLowerCase();
+  const allStories = data.stories || [];
+  const stories = allStories.filter((story) => {
+    const text = `${story.title} ${(story.tags || []).join(' ')}`.toLowerCase();
     return text.includes(search.toLowerCase()) && (filter === 'all' || story.status === filter);
   });
   const label = (story) => story.progress >= 100 ? 'Review' : story.progress > 0 ? 'Continue' : 'Start';
+  const emptyStories = !allStories.length;
   return (
-    <PageShell role="student" title={data.chapter.title} subtitle={data.chapter.subtitle}>
-      <Text mb={3} color="brand.muted" fontSize="13px">Student / Stories / {data.module.title} / {data.chapter.title}</Text>
+    <PageShell role="student" title={data.chapter?.title || 'Chapter'} subtitle={data.chapter?.subtitle}>
+      <Text mb={3} color="brand.muted" fontSize="13px">Student / Stories / {data.module?.title} / {data.chapter?.title}</Text>
       <Button mb={4} bg="brand.navy" color="white" _hover={{ bg: 'brand.goldDark' }} onClick={() => navigate(`/student/stories/module/${moduleId}`)}>Back to Chapters</Button>
-      <DashboardCard mb={5}><Text color="brand.muted">{data.chapter.description}</Text></DashboardCard>
+      <DashboardCard mb={5}><Text color="brand.muted">{data.chapter?.description}</Text></DashboardCard>
+      {emptyStories ? (
+        <EmptyState
+          title="No stories in this chapter"
+          message="This chapter does not have any stories yet. Check back later once content is published."
+        />
+      ) : (
+      <>
       <SearchFilterBar search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} filters={['all','completed','in-progress','not-started']} />
+      {!stories.length ? (
+        <EmptyState
+          title="No stories match your filters"
+          message="Try a different search term or set the status filter to All."
+        />
+      ) : (
       <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
         {stories.map((story) => (
           <DashboardCard key={story.id} cursor="pointer" minH="325px" display="flex" flexDirection="column" onClick={() => navigate(`/student/stories/${story.id}`)}>
@@ -210,18 +271,20 @@ export function StudentChapterStories() {
             </Flex>
             <Heading size="md" mt={7}>{story.title}</Heading>
             <Text color="brand.muted" mt={2} minH="48px">{story.subtitle}</Text>
-            <HStack mt={3} flexWrap="wrap">{story.tags.map((tag) => <Badge key={tag} bg="#FBF1D5" color="brand.goldDark">{tag}</Badge>)}</HStack>
+            <HStack mt={3} flexWrap="wrap">{(story.tags || []).map((tag) => <Badge key={tag} bg="#FBF1D5" color="brand.goldDark">{tag}</Badge>)}</HStack>
             <Progress value={story.progress} mt={4} borderRadius="999px" bg="#EDF2F7" sx={goldProgress} />
             <HStack mt={4} justify="space-between">
               <Text fontSize="13px">{story.progress}% complete</Text>
-              <Text fontSize="13px">{story.tags[0]}</Text>
+              <Text fontSize="13px">{(story.tags || [])[0] || ''}</Text>
             </HStack>
             <Text color="brand.muted" mt={2} noOfLines={2}>{story.lesson}</Text>
             <Button mt="auto" {...primaryCtaProps} onClick={(event) => { event.stopPropagation(); navigate(`/student/stories/${story.id}`); }}>{label(story)} Story</Button>
           </DashboardCard>
         ))}
       </SimpleGrid>
-      {!stories.length && <EmptyState title="No stories found" />}
+      )}
+      </>
+      )}
     </PageShell>
   );
 }
@@ -234,8 +297,14 @@ export function StudentStoryDetail() {
   if (error) return <PageShell role="student" title="Story"><ErrorState message={error} /></PageShell>;
   if (!data) return <PageShell role="student" title="Story"><LoadingState /></PageShell>;
   const { story, module, chapter } = data;
-  const complete = async () => { await studentApi.updateStoryProgress(story.id, 100); toast({ title: 'Story complete', status: 'success' }); reload(); };
-  const continueReading = async () => { await studentApi.updateStoryProgress(story.id, Math.min(100, story.progress + 25)); toast({ title: 'Progress updated', status: 'success' }); reload(); };
+  const complete = async () => {
+    await studentApi.updateStoryProgress(story.id, { progress: 100, readPage: 0 });
+    toast({ title: 'Story complete', status: 'success' });
+    reload();
+  };
+  const continueReading = () => {
+    navigate(`/student/stories/${story.id}/read`);
+  };
   return (
     <PageShell role="student" title={story.title} subtitle={`${module.title} · ${chapter.title}`}>
       <Text mb={3} color="brand.muted" fontSize="13px">Student / Stories / {module.title} / {chapter.title} / {story.title}</Text>
@@ -244,7 +313,7 @@ export function StudentStoryDetail() {
         <Flex justify="space-between" align="start" gap={4}>
           <Box>
             <Text fontSize="20px" color="brand.muted">{story.subtitle}</Text>
-            <HStack mt={3} flexWrap="wrap">{story.tags.map((tag) => <Badge key={tag} bg="#FBF1D5" color="brand.goldDark">{tag}</Badge>)}</HStack>
+            <HStack mt={3} flexWrap="wrap">{(story.tags || []).map((tag) => <Badge key={tag} bg="#FBF1D5" color="brand.goldDark">{tag}</Badge>)}</HStack>
           </Box>
           <Badge fontSize="12px" borderRadius="2px" px={2} {...statusBadgeProps(story.status)}>{story.status.replace('-', ' ').toUpperCase()}</Badge>
         </Flex>
@@ -269,8 +338,25 @@ export function StudentPrinciples() {
   const { data } = useLoad(() => studentApi.list('principles'), []);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
-  const items = filterItems(data || [], search, filter);
-  return <PageShell role="student" title="Principles">{!data ? <LoadingState /> : <><SearchFilterBar search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} filters={['all','Strategy','Tactics','Endgame']} /><CardGrid items={items} onOpen={(item) => navigate(`/student/principles/${item.id}`)} /></>}</PageShell>;
+  const allItems = data || [];
+  const items = filterItems(allItems, search, filter);
+  return (
+    <PageShell role="student" title="Principles">
+      {!data ? <LoadingState /> : (
+        <>
+          <SearchFilterBar search={search} setSearch={setSearch} filter={filter} setFilter={setFilter} filters={['all','Strategy','Tactics','Endgame']} />
+          <CardGrid
+            items={items}
+            onOpen={(item) => navigate(`/student/principles/${item.id}`)}
+            emptyTitle={!allItems.length ? 'No principles yet' : 'No principles match your search'}
+            emptyMessage={!allItems.length
+              ? 'Chess principles have not been added yet. Your coach can add them from Admin → Curriculum → Principles.'
+              : 'Try a different search term or filter.'}
+          />
+        </>
+      )}
+    </PageShell>
+  );
 }
 
 export function StudentPrincipleDetail() {
@@ -573,6 +659,7 @@ export function AdminUsers() {
             filter={filter}
             setFilter={setFilter}
             filters={['all', 'student', 'coach', 'admin']}
+            placeholder="Search users by name, email, or role…"
           />
           <DataTable
             appearance="dashboard"
@@ -610,12 +697,32 @@ export function AdminCrudBody({
   onActionsReady,
   dataTableAppearance = 'default',
   embeddedInCurriculum = false,
+  emptyTitle,
+  emptyMessage,
+  searchQuery = '',
 }) {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload } = useLoad(() => adminApi.list(resource), [resource]);
   const [editing, setEditing] = useState(null);
-  const autoColumns = [{ key: 'title', label: 'Title' }, { key: 'name', label: 'Name' }, { key: 'difficulty', label: 'Difficulty' }, { key: 'role', label: 'Role' }, { key: 'status', label: 'Status', badge: true }].filter((col) => (data || []).some((item) => item[col.key] !== undefined));
+  const filteredData = useMemo(() => {
+    if (!data) return null;
+    const needle = String(searchQuery ?? '').trim();
+    if (!needle) return data;
+    return data.filter((item) =>
+      textMatchesSearch(
+        needle,
+        item.id,
+        item.name,
+        item.title,
+        item.principle,
+        item.module_id,
+        item.chapter_id,
+        item.story_id,
+      ),
+    );
+  }, [data, searchQuery]);
+  const autoColumns = [{ key: 'title', label: 'Title' }, { key: 'name', label: 'Name' }, { key: 'difficulty', label: 'Difficulty' }, { key: 'role', label: 'Role' }, { key: 'status', label: 'Status', badge: true }].filter((col) => (filteredData || []).some((item) => item[col.key] !== undefined));
   const columns = customColumns || (autoColumns.length ? autoColumns : [{ key: 'id', label: 'ID' }]);
   const addButtonLabel = entitySingular ?? title.slice(0, -1);
   const formModalEntity = entitySingular ?? title;
@@ -631,11 +738,24 @@ export function AdminCrudBody({
     };
   }, [onActionsReady, openAdd]);
   const save = async (values) => {
-    editing ? await adminApi.update(resource, editing.id, values) : await adminApi.create(resource, values);
-    toast({ title: `${title} saved`, status: 'success' });
-    setEditing(null);
-    modal.onClose();
-    reload();
+    try {
+      if (editing) {
+        await adminApi.update(resource, editing.id, values);
+      } else {
+        await adminApi.create(resource, values);
+      }
+      toast({ title: `${title} saved`, status: 'success' });
+      setEditing(null);
+      modal.onClose();
+      reload();
+    } catch (err) {
+      toast({
+        title: `Could not save ${title.toLowerCase()}`,
+        description: err.response?.data?.error || err.message,
+        status: 'error',
+        duration: 6000,
+      });
+    }
   };
   const tableBlock = (
     <>
@@ -644,7 +764,7 @@ export function AdminCrudBody({
           Add {addButtonLabel}
         </Button>
       )}
-      {!data ? (
+      {!filteredData ? (
         embeddedInCurriculum ? (
           <Box py={10} px={4} textAlign="center">
             <LoadingState />
@@ -652,12 +772,27 @@ export function AdminCrudBody({
         ) : (
           <LoadingState />
         )
+      ) : filteredData.length === 0 ? (
+        <EmptyState
+          title={
+            data?.length && searchQuery?.trim()
+              ? `No ${title.toLowerCase()} match your search`
+              : (emptyTitle || `No ${title.toLowerCase()} yet`)
+          }
+          message={
+            data?.length && searchQuery?.trim()
+              ? 'Try a different name or ID.'
+              : (emptyMessage || `Use Add ${addButtonLabel} to create your first entry.`)
+          }
+        />
       ) : (
         <DataTable
-          items={data}
+          items={filteredData}
           columns={columns}
           appearance={dataTableAppearance}
           nested={embeddedInCurriculum}
+          emptyTitle={emptyTitle}
+          emptyMessage={emptyMessage}
           onView={onView}
           onEdit={(item) => { setEditing(item); modal.onOpen(); }}
           onDelete={async (item) => {
@@ -804,14 +939,16 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
       >
         <Table variant="simple" size="sm" className="story-items-table" sx={{ tableLayout: 'fixed', width: '100%' }}>
           <colgroup>
-            <col className="story-col-message" style={{ width: '58%' }} />
-            <col className="story-col-principle" style={{ width: '32%' }} />
-            <col className="story-col-actions" style={{ width: '10%' }} />
+            <col className="story-id-column" />
+            <col className="story-col-message" />
+            <col className="story-col-principle" />
+            <col className="story-col-actions" />
           </colgroup>
           <Thead bg="rgba(250, 247, 240, 0.95)">
             <Tr>
+              <Th className="story-id-column" py={3} px={2} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">STORY ID</Th>
               <Th className="story-col-message" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">MESSAGE / STORY TEXT</Th>
-              <Th className="story-col-principle" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">PRINCIPLE</Th>
+              <Th className="story-col-principle" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">PRINCIPLE (ID)</Th>
               <Th className="story-col-actions" py={4} fontSize="11px" fontWeight="800" color="brand.navy" letterSpacing="0.07em" textTransform="uppercase" fontFamily="body">ACTIONS</Th>
             </Tr>
           </Thead>
@@ -831,20 +968,27 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
                   borderColor="rgba(7,17,31,0.06)"
                   _hover={{ bg: 'rgba(214,168,79,0.07)', transition: 'background 0.18s ease' }}
                 >
+                  <Td className="story-id-column" py={3} px={2} verticalAlign="middle">
+                    <Text fontSize="xs" fontWeight="700" color="brand.goldDark" noOfLines={1} title={m.storyId}>
+                      {m.storyId}
+                    </Text>
+                  </Td>
                   <Td className="story-col-message" py={4}>
                     <Text fontSize="13px" color="brand.muted" lineHeight="1.6" whiteSpace="normal" wordBreak="break-word">
                       {m.storyText}
                     </Text>
                   </Td>
                   <Td className="story-col-principle" py={4}>
-                    <Text 
-                      fontSize="13px" 
-                      fontWeight="700" 
-                      color="brand.text" 
-                      lineHeight="1.5" 
+                    <Text fontSize="xs" fontWeight="700" color="brand.goldDark" mb={1}>
+                      {m.principleId || '—'}
+                    </Text>
+                    <Text
+                      fontSize="13px"
+                      fontWeight="700"
+                      color="brand.text"
+                      lineHeight="1.5"
                       whiteSpace="normal"
                       wordBreak="break-word"
-                      title={m.principleId}
                     >
                       {principleName}
                     </Text>
@@ -883,8 +1027,8 @@ const MappingMessageTable = ({ mappings, onUpdateMapping, principles = [] }) => 
   );
 };
 
-const NestedStoriesView = ({ search, principles = [] }) => {
-  const { data, reload, loading, error } = useLoad(() => adminApi.nestedCurriculumStories(), []);
+const NestedStoriesView = ({ search, principles = [], onEditStory, refreshKey = 0 }) => {
+  const { data, reload, loading, error } = useLoad(() => adminApi.nestedCurriculumStories(), [refreshKey]);
   
   const onUpdateMapping = () => {
     reload();
@@ -896,25 +1040,35 @@ const NestedStoriesView = ({ search, principles = [] }) => {
   );
 
   const filteredModules = useMemo(() => {
-    const searchLower = search.toLowerCase();
+    const needle = search.trim();
+    if (!needle) return sortedModules;
     return sortedModules.filter((m) => {
-      const moduleMatches = m.name.toLowerCase().includes(searchLower);
+      const moduleMatches = textMatchesSearch(needle, m.id, m.name);
 
       const chaptersWithMatches = m.chapters.filter((c) => {
-        const chapterMatches = c.name.toLowerCase().includes(searchLower);
+        const chapterMatches = textMatchesSearch(needle, c.id, c.name);
         const storiesWithMatches = c.stories.filter((s) => {
-          const storyMatches =
-            s.title.toLowerCase().includes(searchLower)
-            || (s.description || '').toLowerCase().includes(searchLower)
-            || s.status.includes(searchLower);
+          const storyMatches = textMatchesSearch(
+            needle,
+            s.id,
+            s.title,
+            s.description,
+            s.status,
+          );
           const mappingsWithMatches = s.mappings.filter((sm) =>
-            (sm.storyText || '').toLowerCase().includes(searchLower)
-            || (sm.principleName || '').toLowerCase().includes(searchLower)
-            || (sm.principleLabel || '').toLowerCase().includes(searchLower)
-            || (sm.principleId || '').toLowerCase().includes(searchLower)
-            || (principles.find(
-              (p) => String(p.id).trim().toLowerCase() === String(sm.principleId).trim().toLowerCase(),
-            )?.name || '').toLowerCase().includes(searchLower),
+            textMatchesSearch(
+              needle,
+              sm.id,
+              sm.mappingId,
+              sm.storyId,
+              sm.principleId,
+              sm.storyText,
+              sm.principleName,
+              sm.principleLabel,
+              principles.find(
+                (p) => String(p.id).trim().toLowerCase() === String(sm.principleId).trim().toLowerCase(),
+              )?.name,
+            ),
           );
           return storyMatches || mappingsWithMatches.length > 0;
         });
@@ -927,10 +1081,22 @@ const NestedStoriesView = ({ search, principles = [] }) => {
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
-  if (!data?.modules?.length) return <EmptyState title="No curriculum stories found." />;
+  if (!data?.modules?.length) {
+    return (
+      <EmptyState
+        title="No stories in curriculum"
+        message="Add modules and chapters first, then create stories from the Stories tab or use Add Story."
+      />
+    );
+  }
 
   if (filteredModules.length === 0 && search) {
-    return <EmptyState title="No curriculum stories found for this search." />;
+    return (
+      <EmptyState
+        title="No stories match your search"
+        message="Try a different story title, story ID, chapter ID, or module ID."
+      />
+    );
   }
 
   return (
@@ -939,6 +1105,9 @@ const NestedStoriesView = ({ search, principles = [] }) => {
         <Box key={module.id} p={6} bg="brand.card" borderRadius="18px" border="1px solid" borderColor="rgba(214,168,79,0.14)" boxShadow="0 10px 32px rgba(7,17,31,0.06)">
           <Flex justify="space-between" align="start" mb={6}>
             <Box>
+              <Text fontSize="xs" fontWeight="700" color="brand.goldDark" letterSpacing="0.06em" textTransform="uppercase" mb={1}>
+                {module.id}
+              </Text>
               <Heading size="lg" color="brand.navy" fontFamily="serif">{module.name}</Heading>
             </Box>
             <HStack>
@@ -951,24 +1120,40 @@ const NestedStoriesView = ({ search, principles = [] }) => {
 
           <VStack align="stretch" spacing={6}>
             {module.chapters.length === 0 ? (
-              <Text color="brand.muted" fontStyle="italic" pl={4}>No chapters in this module.</Text>
+              <EmptyState
+                title="No chapters in this module"
+                message="Add chapters under this module from the Chapters tab."
+              />
             ) : (
               module.chapters.map(chapter => (
                 <Box key={chapter.id} p={5} bg="rgba(250, 247, 240, 0.65)" borderRadius="14px" border="1px solid" borderColor="rgba(214,168,79,0.12)" borderLeftWidth="4px" borderLeftColor="brand.gold">
                   <Flex justify="space-between" align="center" mb={4}>
-                    <Heading size="md" color="brand.navy" fontFamily="serif">{chapter.name}</Heading>
+                    <Box>
+                      <Text fontSize="xs" fontWeight="700" color="brand.goldDark" letterSpacing="0.06em" textTransform="uppercase" mb={0.5}>
+                        {chapter.id}
+                      </Text>
+                      <Heading size="md" color="brand.navy" fontFamily="serif">{chapter.name}</Heading>
+                    </Box>
                     <Badge variant="outline" colorScheme="brand" borderRadius="full" px={3}>{chapter.stories.length} Stories</Badge>
                   </Flex>
 
                   <VStack align="stretch" spacing={4}>
                     {chapter.stories.length === 0 ? (
-                      <Text color="brand.muted" fontStyle="italic" fontSize="sm" pl={6}>No stories in this chapter.</Text>
+                      <Box pl={2} py={2}>
+                        <EmptyState
+                          title="No stories in this chapter"
+                          message="Use Add Story to publish a story in this chapter."
+                        />
+                      </Box>
                     ) : (
                       chapter.stories.map(story => (
                         <Box key={story.id} p={4} bg="white" borderRadius="12px" border="1px solid" borderColor="rgba(214,168,79,0.12)" boxShadow="0 4px 16px rgba(7,17,31,0.04)">
                           <Flex justify="space-between" align="start">
                             <Box flex="1">
-                              <HStack mb={1}>
+                              <HStack mb={1} flexWrap="wrap" gap={2}>
+                                <Text fontSize="xs" fontWeight="700" color="brand.goldDark" letterSpacing="0.05em">
+                                  {story.id}
+                                </Text>
                                 <Heading size="sm" color="brand.navy">{story.title}</Heading>
                                 <Badge colorScheme={story.status === 'published' ? 'green' : 'orange'} fontSize="2xs" borderRadius="full" px={2}>
                                   {story.status.replace('_', ' ').toUpperCase()}
@@ -976,11 +1161,25 @@ const NestedStoriesView = ({ search, principles = [] }) => {
                               </HStack>
                               <Text fontSize="xs" color="brand.muted" noOfLines={2}>{story.description}</Text>
                             </Box>
-                            <StoryStatusSelect 
-                              storyId={story.id} 
-                              currentStatus={story.status} 
-                              onUpdate={() => reload()} 
-                            />
+                            <HStack spacing={2} flexShrink={0}>
+                              {onEditStory && (
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  borderColor="rgba(169,119,33,0.35)"
+                                  color="brand.navy"
+                                  fontWeight="600"
+                                  onClick={() => onEditStory(story, module.id, chapter.id)}
+                                >
+                                  Edit
+                                </Button>
+                              )}
+                              <StoryStatusSelect 
+                                storyId={story.id} 
+                                currentStatus={story.status} 
+                                onUpdate={() => reload()} 
+                              />
+                            </HStack>
                           </Flex>
                           
                           <MappingMessageTable 
@@ -1593,6 +1792,20 @@ function sortNestedCurriculumModules(modules) {
 
 const CURRICULUM_TAB_SLUGS = ['modules', 'chapters', 'stories', 'principles'];
 
+const CURRICULUM_SEARCH_PLACEHOLDERS = [
+  'Search for a module by name or ID…',
+  'Search for a chapter by name or ID…',
+  'Search for a story by title or ID…',
+  'Search for a principle by name or ID…',
+];
+
+/** True if needle is empty or any field contains needle (case-insensitive). */
+function textMatchesSearch(needle, ...fields) {
+  const n = String(needle ?? '').trim().toLowerCase();
+  if (!n) return true;
+  return fields.some((f) => String(f ?? '').toLowerCase().includes(n));
+}
+
 function parseCurriculumTab(tabParam) {
   if (tabParam == null || tabParam === '') return 0;
   const raw = String(tabParam).trim();
@@ -1625,22 +1838,19 @@ const CURRICULUM_PRIMARY_BUTTON = {
   _active: { bg: '#050d18' },
 };
 
-/** Positions API (`resource="positions"`) — Principles UI in admin curriculum tab. */
+/** Principles tab — uses `/admin/principles` (database.sql: principleid, principlename). */
 const ADMIN_POSITIONS_TAB_CRUD = {
   title: 'Principles',
-  resource: 'positions',
+  resource: 'principles',
   entitySingular: 'Principle',
+  emptyTitle: 'No principles yet',
+  emptyMessage: 'Click Add Principle above to create your first chess principle.',
   columns: [
     { key: 'id', label: 'ID', bold: true },
-    { key: 'principle', label: 'PRINCIPLE' },
-    { key: 'isdone', label: 'STATUS', badge: true },
+    { key: 'name', label: 'PRINCIPLE' },
   ],
   fields: [
-    { name: 'id', label: 'ID', required: true },
-    { name: 'principle', label: 'Principle' },
-    { name: 'fen_with_move', label: 'FEN with Move' },
-    { name: 'puzzle_list', label: 'Puzzle List (JSON)' },
-    { name: 'isdone', label: 'Done', type: 'checkbox' },
+    { name: 'name', label: 'Principle', required: true },
   ],
 };
 
@@ -1648,7 +1858,18 @@ export function AdminCurriculum() {
   const modal = useDisclosure();
   const toast = useToast();
   const { data, reload, loading } = useLoad(() => adminApi.curriculum(), []);
-  
+  const {
+    data: principlesList,
+    reload: reloadPrinciples,
+    loading: principlesLoading,
+  } = useLoad(() => adminApi.list('principles'), []);
+
+  const principlesForStory = useMemo(() => {
+    const normalized = normalizePrinciplesList(principlesList);
+    console.log('[AdminCurriculum] principles for story modal:', normalized);
+    return normalized;
+  }, [principlesList]);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const activeTab = useMemo(() => parseCurriculumTab(tabParam), [tabParam]);
@@ -1665,8 +1886,23 @@ export function AdminCurriculum() {
     if (activeTab === 3) modal.onClose();
   }, [activeTab, modal.onClose]);
 
+  const storyModalWasOpenRef = useRef(false);
+  useEffect(() => {
+    const storyModalOpen = modal.isOpen && activeTab === 2;
+    if (storyModalOpen && !storyModalWasOpenRef.current) {
+      console.log('[AdminCurriculum] Story modal opened — refreshing principles');
+      reloadPrinciples();
+    }
+    storyModalWasOpenRef.current = storyModalOpen;
+  }, [modal.isOpen, activeTab, reloadPrinciples]);
+
+  useEffect(() => {
+    setSearch('');
+  }, [activeTab]);
+
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
+  const [storiesRefreshKey, setStoriesRefreshKey] = useState(0);
 
   const handleSave = async (values) => {
     try {
@@ -1682,6 +1918,7 @@ export function AdminCurriculum() {
       toast({ title: 'Saved successfully', status: 'success' });
       modal.onClose();
       reload();
+      if (activeTab === 2) setStoriesRefreshKey((k) => k + 1);
     } catch (err) {
       toast({ title: 'Error saving', description: err.response?.data?.error || err.message, status: 'error' });
     }
@@ -1711,21 +1948,6 @@ export function AdminCurriculum() {
           { name: 'title', label: 'Chapter Title', required: true },
           { name: 'module_id', label: 'Module', required: true, options: (data.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
         ],
-        [
-          { name: 'title', label: 'Story Title', required: true },
-          { name: 'module_id', label: 'Module', required: true, options: (data.modules || []).map(m => ({ label: m.title, value: m.module_id })) },
-          { 
-            name: 'chapter_id', 
-            label: 'Chapter', 
-            required: true, 
-            options: (data.chapters || [])
-              .filter(c => !currentValues.module_id || c.module_id === currentValues.module_id)
-              .map(c => ({ label: c.title, value: c.chapter_id })) 
-          },
-          { name: 'description', label: 'Short Description', type: 'textarea' },
-          { name: 'status', label: 'Status', options: ['published', 'draft'] },
-          { name: 'tags', label: 'Tags (comma separated)' },
-        ],
       ];
       return fieldSets[activeTab] ?? [];
     };
@@ -1733,16 +1955,35 @@ export function AdminCurriculum() {
 
   const filteredModules = useMemo(() => {
     const list = data?.modules || [];
-    const needle = search.toLowerCase();
-    const filtered = list.filter((m) => m.title.toLowerCase().includes(needle));
+    const filtered = list.filter((m) => textMatchesSearch(search, m.title, m.module_id));
     return [...filtered].sort(compareModulesByModuleId);
   }, [data, search]);
   const filteredChapters = useMemo(() => {
     const list = data?.chapters || [];
-    const needle = search.toLowerCase();
-    const filtered = list.filter((c) => c.title.toLowerCase().includes(needle));
+    const filtered = list.filter((c) =>
+      textMatchesSearch(search, c.title, c.chapter_id, c.module_id, c.module_name),
+    );
     return [...filtered].sort(compareChaptersByModuleThenChapterId);
   }, [data, search]);
+  const chaptersTabModules = useMemo(() => {
+    const modules = data?.modules || [];
+    const chapters = data?.chapters || [];
+    const needle = String(search ?? '').trim();
+    if (!needle) return [...modules].sort(compareModulesByModuleId);
+    const moduleIdsWithChapterHits = new Set(
+      chapters
+        .filter((c) => textMatchesSearch(needle, c.title, c.chapter_id, c.module_id, c.module_name))
+        .map((c) => c.module_id),
+    );
+    return modules
+      .filter(
+        (m) =>
+          textMatchesSearch(needle, m.title, m.module_id)
+          || moduleIdsWithChapterHits.has(m.module_id),
+      )
+      .sort(compareModulesByModuleId);
+  }, [data, search]);
+  const curriculumSearchPlaceholder = CURRICULUM_SEARCH_PLACEHOLDERS[activeTab] ?? CURRICULUM_SEARCH_PLACEHOLDERS[0];
 
   return (
     <PageShell role="admin" title="Curriculum">
@@ -1763,7 +2004,12 @@ export function AdminCurriculum() {
             boxShadow="0 4px 18px rgba(7, 17, 31, 0.04)"
           >
             <VStack align="stretch" spacing={activeTab === 3 ? 3 : 4}>
-              {activeTab !== 3 && <SearchFilterBar search={search} setSearch={setSearch} showFilter={false} />}
+              <SearchFilterBar
+                search={search}
+                setSearch={setSearch}
+                showFilter={false}
+                placeholder={curriculumSearchPlaceholder}
+              />
               
               <Box {...CURRICULUM_TOOLBAR_CARD}>
                 <Flex
@@ -1837,8 +2083,13 @@ export function AdminCurriculum() {
                 <DataTable
                   items={filteredModules}
                   appearance="curriculum"
+                  emptyTitle={!(data?.modules || []).length ? 'No modules yet' : 'No modules match your search'}
+                  emptyMessage={!(data?.modules || []).length
+                    ? 'Click Add Module above to create your first curriculum module.'
+                    : 'Try a different module name or module ID.'}
                   columns={[
-                    { key: 'title', label: 'MODULE', bold: true },
+                    { key: 'module_id', label: 'ID', bold: true },
+                    { key: 'title', label: 'MODULE' },
                     { key: 'chaptersCount', label: 'CHAPTERS' },
                   ]}
                   onEdit={(item) => { setEditing(item); modal.onOpen(); }}
@@ -1848,48 +2099,86 @@ export function AdminCurriculum() {
               
               {activeTab === 1 && (
                 <>
-                  {filteredModules.map(module => {
-                    const moduleChapters = [...filteredChapters.filter((c) => c.module_id === module.module_id)].sort(
-                      compareChaptersByChapterId,
-                    );
-                    return (
-                      <Box key={module.module_id} mb={8} p={5} bg="brand.card" borderRadius="14px" border="1px solid" borderColor="rgba(214,168,79,0.14)" boxShadow="0 8px 28px rgba(7,17,31,0.055)">
-                        <Flex justify="space-between" align="center" mb={4}>
-                          <Box>
-                            <Heading size="md" color="brand.navy">{module.title}</Heading>
-                          </Box>
-                          <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
-                            {moduleChapters.length} Chapters
-                          </Badge>
-                        </Flex>
-                        {moduleChapters.length > 0 ? (
-                          <DataTable
-                            appearance="curriculum"
-                            items={moduleChapters}
-                            columns={[
-                              { key: 'title', label: 'CHAPTER', bold: true },
-                              { key: 'storiesCount', label: 'STORIES' },
-                            ]}
-                            onEdit={(item) => { setEditing(item); modal.onOpen(); }}
-                            onDelete={handleDelete}
-                          />
-                        ) : (
-                          <Text color="brand.muted" fontStyle="italic" py={4}>No chapters added to this module yet.</Text>
-                        )}
-                      </Box>
-                    );
-                  })}
+                  {!(data?.chapters || []).length ? (
+                    <EmptyState
+                      title="No chapters yet"
+                      message={
+                        !(data?.modules || []).length
+                          ? 'Add a module from the Modules tab first, then use Add Chapter to create chapters.'
+                          : 'Click Add Chapter above to add chapters to your modules.'
+                      }
+                    />
+                  ) : chaptersTabModules.length === 0 && search.trim() ? (
+                    <EmptyState
+                      title="No chapters match your search"
+                      message="Try a different chapter name, chapter ID, or module ID."
+                    />
+                  ) : (
+                    chaptersTabModules.map((module) => {
+                      const moduleChapters = [...filteredChapters.filter((c) => c.module_id === module.module_id)].sort(
+                        compareChaptersByChapterId,
+                      );
+                      return (
+                        <Box key={module.module_id} mb={8} p={5} bg="brand.card" borderRadius="14px" border="1px solid" borderColor="rgba(214,168,79,0.14)" boxShadow="0 8px 28px rgba(7,17,31,0.055)">
+                          <Flex justify="space-between" align="center" mb={4}>
+                            <Box>
+                              <Heading size="md" color="brand.navy">{module.title}</Heading>
+                            </Box>
+                            <Badge bg="brand.navy" color="white" px={3} py={1} borderRadius="full">
+                              {moduleChapters.length} Chapters
+                            </Badge>
+                          </Flex>
+                          {moduleChapters.length > 0 ? (
+                            <DataTable
+                              appearance="curriculum"
+                              items={moduleChapters}
+                              emptyTitle="No chapters in this module"
+                              emptyMessage="Add a chapter and assign it to this module."
+                              columns={[
+                                { key: 'chapter_id', label: 'ID', bold: true },
+                                { key: 'title', label: 'CHAPTER' },
+                                { key: 'storiesCount', label: 'STORIES' },
+                              ]}
+                              onEdit={(item) => { setEditing(item); modal.onOpen(); }}
+                              onDelete={handleDelete}
+                            />
+                          ) : (
+                            <EmptyState
+                              title="No chapters in this module"
+                              message="Add a chapter and assign it to this module from the Add Chapter flow."
+                            />
+                          )}
+                        </Box>
+                      );
+                    })
+                  )}
                 </>
               )}
               
               {activeTab === 2 && (
-                <NestedStoriesView search={search} principles={data?.principles} />
+                <NestedStoriesView
+                  search={search}
+                  principles={principlesForStory}
+                  refreshKey={storiesRefreshKey}
+                  onEditStory={(story, moduleId, chapterId) => {
+                    setEditing({
+                      story_id: story.id,
+                      module_id: moduleId,
+                      chapter_id: chapterId,
+                      title: story.title,
+                      status: story.status,
+                      mappings: story.mappings,
+                    });
+                    modal.onOpen();
+                  }}
+                />
               )}
 
               {activeTab === 3 && (
                 <AdminCrudBody
                   {...ADMIN_POSITIONS_TAB_CRUD}
                   hideAddButton
+                  searchQuery={search}
                   onActionsReady={registerPrinciplesActions}
                   dataTableAppearance="curriculum"
                   embeddedInCurriculum
@@ -1899,16 +2188,27 @@ export function AdminCurriculum() {
           </Box>
         </VStack>
       )}
-      {activeTab < 3 && (
+      {activeTab < 2 && (
         <FormModal
           isOpen={modal.isOpen}
           onClose={modal.onClose}
-          title={`${editing ? 'Edit' : 'Add'} ${['Module', 'Chapter', 'Story'][activeTab]}`}
+          title={`${editing ? 'Edit' : 'Add'} ${['Module', 'Chapter'][activeTab]}`}
           fields={fields}
           initialValues={editing || EMPTY_OBJECT}
           onSubmit={handleSave}
         />
       )}
+      <StoryFormModal
+        isOpen={modal.isOpen && activeTab === 2}
+        onClose={modal.onClose}
+        title={`${editing?.story_id ? 'Edit' : 'Add'} Story`}
+        modules={data?.modules || []}
+        chapters={data?.chapters || []}
+        principles={principlesForStory}
+        principlesLoading={principlesLoading && !principlesForStory.length}
+        initialValues={editing || EMPTY_OBJECT}
+        onSubmit={handleSave}
+      />
     </PageShell>
   );
 }
@@ -1952,7 +2252,10 @@ export function AdminPuzzles() {
         { 
           name: 'principle_id', 
           label: 'Principle', 
-          options: (principles || []).map(p => ({ label: p.name, value: p.id })) 
+          options: normalizePrinciplesList(principles).map((p) => ({
+            label: `${p.principleId} - ${p.name}`,
+            value: p.id,
+          })) 
         }, 
         { name: 'fen_with_move', label: 'FEN with Move' }, 
         { name: 'answer', label: 'Answer' },

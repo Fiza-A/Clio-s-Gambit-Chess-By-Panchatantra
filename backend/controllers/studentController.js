@@ -1,6 +1,16 @@
-import { readDb, writeDb, logAction, findChapter, findModule, findStoryById, updateStoryProgress } from '../data/mockDb.js';
+import { readDb, writeDb, logAction, findStoryById, updateStoryProgress } from '../data/mockDb.js';
 import { query } from '../data/database.js';
-import { parseIds } from './adminController.js';
+import { T, mapStudentStory } from '../data/dbSchema.js';
+import { comparePrincipleRowsById, ensureCurriculumIdsReady } from '../data/curriculumIds.js';
+import {
+  fetchStoryModulesList,
+  fetchStoryModuleDetail,
+  fetchModuleChapters,
+  fetchChapterStories,
+  fetchStoryForReading,
+  logStudentError,
+  EMPTY_MODULE_PAYLOAD,
+} from '../services/studentCurriculumService.js';
 
 const byId = (items, id) => items.find((item) => item.id === id);
 
@@ -8,115 +18,211 @@ export const dashboard = (_req, res) => res.json(readDb().dashboards.student);
 export const stories = (_req, res) => res.json(readDb().student.stories);
 
 export async function storyModules(_req, res) {
+  const route = '/story-modules';
   try {
-    const result = await query('SELECT * FROM "module" ORDER BY created_at');
-    const modules = result.rows.map(m => ({
-      id: m.module_id,
-      title: m.module_name,
-      subtitle: 'Ancient wisdom for modern play',
-      description: 'Explore tactical and strategic concepts through Panchatantra stories.',
-      icon: '♜',
-      level: 'Intermediate',
-      progress: 0,
-      totalChapters: 3,
-      totalStories: 10,
-      unlocked: true
-    }));
+    const modules = await fetchStoryModulesList();
     res.json(modules);
   } catch (err) {
-    console.error('Error fetching modules:', err);
-    res.status(500).json({ error: 'Failed to fetch modules' });
+    logStudentError(route, err);
+    res.status(500).json({ error: 'Failed to fetch modules', details: err.message });
   }
 }
 
 export async function storyModule(req, res) {
+  const { moduleId } = req.params;
+  const route = `/story-modules/${moduleId}`;
   try {
-    const { moduleId } = req.params;
-    const moduleResult = await query('SELECT * FROM "module" WHERE module_id = $1', [moduleId]);
-    if (moduleResult.rows.length === 0) return res.status(404).json({ error: 'Module not found' });
-    
-    const m = moduleResult.rows[0];
-    const chapterIds = parseIds(m.chapter_ids);
-    
-    const chaptersResult = await query('SELECT * FROM "chapter" WHERE chapter_id = ANY($1)', [chapterIds]);
-    
-    const module = {
-      id: m.module_id,
-      title: m.module_name,
-      chapters: chaptersResult.rows.map(c => ({
-        id: c.chapter_id,
-        title: c.chapter_name,
-        progress: 0,
-        totalStories: 5,
-        stories: [] // Stories would be another table or part of chapter
-      }))
-    };
-    
-    res.json(module);
+    const payload = await fetchStoryModuleDetail(moduleId);
+    if (payload.notFound) {
+      return res.status(404).json({ error: 'Module not found', ...EMPTY_MODULE_PAYLOAD });
+    }
+    res.json({
+      module: payload.module,
+      chapters: payload.chapters,
+      stories: payload.stories,
+    });
   } catch (err) {
-    console.error('Error fetching module:', err);
-    res.status(500).json({ error: 'Failed to fetch module' });
+    logStudentError(route, err, { moduleId });
+    res.status(500).json({
+      error: 'Failed to fetch module',
+      details: err.message,
+      ...EMPTY_MODULE_PAYLOAD,
+    });
   }
 }
 
 export async function moduleChapters(req, res) {
+  const { moduleId } = req.params;
+  const route = `/story-modules/${moduleId}/chapters`;
   try {
-    const { moduleId } = req.params;
-    const moduleResult = await query('SELECT * FROM "module" WHERE module_id = $1', [moduleId]);
-    if (moduleResult.rows.length === 0) return res.status(404).json({ error: 'Module not found' });
-    
-    const m = moduleResult.rows[0];
-    const chapterIds = parseIds(m.chapter_ids);
-    
-    const chaptersResult = await query('SELECT * FROM "chapter" WHERE chapter_id = ANY($1)', [chapterIds]);
-    
-    res.json(chaptersResult.rows.map(c => ({
-      id: c.chapter_id,
-      title: c.chapter_name,
-      progress: 0,
-      totalStories: 5
-    })));
+    const payload = await fetchModuleChapters(moduleId);
+    if (payload.notFound) {
+      return res.status(404).json({ error: 'Module not found', chapters: [] });
+    }
+    res.json(payload.chapters);
   } catch (err) {
-    console.error('Error fetching chapters:', err);
-    res.status(500).json({ error: 'Failed to fetch chapters' });
+    logStudentError(route, err, { moduleId });
+    res.status(500).json({ error: 'Failed to fetch chapters', details: err.message });
   }
 }
 
 export function chapterDetail(req, res) {
-  const db = readDb();
-  const module = findModule(db, req.params.moduleId);
-  const chapter = findChapter(db, req.params.moduleId, req.params.chapterId);
-  if (!module || !chapter) return res.status(404).json({ error: 'Chapter not found' });
-  return res.json({ module: { ...module, chapters: undefined }, chapter });
+  return res.status(410).json({ error: 'Use chapter stories endpoint' });
 }
-export function chapterStories(req, res) {
-  const db = readDb();
-  const module = findModule(db, req.params.moduleId);
-  const chapter = findChapter(db, req.params.moduleId, req.params.chapterId);
-  if (!module || !chapter) return res.status(404).json({ error: 'Chapter not found' });
-  return res.json({ module: { ...module, chapters: undefined }, chapter: { ...chapter, stories: undefined }, stories: chapter.stories });
+
+export async function chapterStories(req, res) {
+  const { moduleId, chapterId } = req.params;
+  const route = `/story-modules/${moduleId}/chapters/${chapterId}/stories`;
+  try {
+    const payload = await fetchChapterStories(moduleId, chapterId);
+    if (payload.notFound) {
+      return res.status(404).json({
+        error: payload.notFoundKind === 'chapter' ? 'Chapter not found' : 'Module not found',
+        module: payload.module || {},
+        chapter: payload.chapter || {},
+        stories: [],
+      });
+    }
+    res.json({
+      module: payload.module,
+      chapter: payload.chapter,
+      stories: payload.stories,
+    });
+  } catch (err) {
+    logStudentError(route, err, { moduleId, chapterId });
+    res.status(500).json({
+      error: 'Failed to fetch chapter stories',
+      details: err.message,
+      module: {},
+      chapter: {},
+      stories: [],
+    });
+  }
 }
-export function story(req, res) {
-  const found = findStoryById(readDb(), req.params.id);
-  if (!found) return res.status(404).json({ error: 'Story not found' });
-  return res.json({
-    story: found.story,
-    module: { ...found.module, chapters: undefined },
-    chapter: { ...found.chapter, stories: undefined }
-  });
+
+export async function story(req, res) {
+  const route = `/stories/${req.params.id}`;
+  try {
+    const { id } = req.params;
+    const db = readDb();
+
+    const payload = await fetchStoryForReading(id);
+    if (!payload.notFound) {
+      return res.json(payload);
+    }
+
+    const found = findStoryById(db, id);
+    if (!found) return res.status(404).json({ error: 'Story not found' });
+
+    const story = found.story;
+    return res.json({
+      story: {
+        ...story,
+        storyId: story.id,
+        storyTitle: story.title,
+        introduction: story.subtitle || story.body?.slice(0, 200) || '',
+        panchatantraLesson: story.lesson,
+        storyImages: story.storyImages || [],
+      },
+      module: {
+        id: found.module.id,
+        title: found.module.title,
+        name: found.module.title,
+      },
+      chapter: {
+        id: found.chapter.id,
+        title: found.chapter.title,
+        name: found.chapter.title,
+      },
+      principles: [],
+      messages: [{ storyId: story.id, text: story.body || '', principleId: null, principleName: null }],
+      storyImages: story.storyImages || [],
+      navigation: { prevStoryId: null, nextStoryId: null },
+    });
+  } catch (err) {
+    logStudentError(route, err);
+    res.status(500).json({ error: 'Failed to fetch story', details: err.message });
+  }
 }
-export function storyProgress(req, res) {
-  const db = readDb();
-  const found = updateStoryProgress(db, req.params.id, req.body.progress);
-  if (!found) return res.status(404).json({ error: 'Story not found' });
-  logAction(db, 'student', `Updated story ${found.story.title}`);
-  writeDb(db);
-  res.json({ story: found.story, module: found.module, chapter: found.chapter });
+
+export async function storyProgress(req, res) {
+  const route = `/stories/${req.params.id}/progress`;
+  try {
+    const { id } = req.params;
+    const db = readDb();
+    const hasProgress = req.body.progress !== undefined && req.body.progress !== null;
+    const hasReadPage = req.body.readPage !== undefined && req.body.readPage !== null;
+    const progress = hasProgress
+      ? Math.max(0, Math.min(100, Number(req.body.progress)))
+      : undefined;
+    const readPage = hasReadPage
+      ? Math.max(0, Math.floor(Number(req.body.readPage)))
+      : undefined;
+
+    let mockFound = findStoryById(db, id);
+    if (mockFound) {
+      if (progress !== undefined) {
+        mockFound = updateStoryProgress(db, id, progress);
+      }
+      if (readPage !== undefined && mockFound) {
+        if (!db.student.storyProgressById) db.student.storyProgressById = {};
+        const prev = db.student.storyProgressById[id] || {};
+        db.student.storyProgressById[id] = {
+          progress: progress !== undefined ? progress : Number(prev.progress ?? mockFound.story.progress ?? 0),
+          readPage,
+        };
+        mockFound.story.readPage = readPage;
+      }
+      logAction(db, 'student', `Updated story ${mockFound.story.title}`);
+      writeDb(db);
+      return res.json({
+        story: mockFound.story,
+        module: { ...mockFound.module, chapters: undefined },
+        chapter: { ...mockFound.chapter, stories: undefined },
+      });
+    }
+
+    const storyResult = await query(
+      `SELECT s.storyid, s.storytitle, s.storydescription, s.storytext, s.chapterid,
+              c.chaptername, m.moduleid, m.modulename
+       FROM ${T.stories} s
+       LEFT JOIN ${T.chapter} c ON s.chapterid = c.chapterid
+       LEFT JOIN ${T.module} m ON c.moduleid = m.moduleid
+       WHERE s.storyid = $1`,
+      [id],
+    );
+    if (storyResult.rows.length === 0) return res.status(404).json({ error: 'Story not found' });
+
+    if (!db.student.storyProgressById) db.student.storyProgressById = {};
+    const prev = db.student.storyProgressById[id] || {};
+    db.student.storyProgressById[id] = {
+      progress: progress !== undefined ? progress : Number(prev.progress ?? 0),
+      readPage: readPage !== undefined ? readPage : Number(prev.readPage ?? 0),
+    };
+    writeDb(db);
+
+    const row = storyResult.rows[0];
+    const mapped = mapStudentStory(row, db);
+    logAction(db, 'student', `Updated story ${mapped.title}`);
+
+    res.json({
+      story: mapped,
+      module: { id: row.moduleid, title: row.modulename },
+      chapter: { id: row.chapterid, title: row.chaptername },
+    });
+  } catch (err) {
+    logStudentError(route, err);
+    res.status(500).json({ error: 'Failed to update story progress', details: err.message });
+  }
 }
+
 export const principles = async (_req, res) => {
   try {
-    const result = await query('SELECT id, name FROM public.principles ORDER BY name ASC');
-    res.json(result.rows);
+    await ensureCurriculumIdsReady();
+    const result = await query(
+      `SELECT principleid AS id, principlename AS name FROM ${T.principles}`,
+    );
+    res.json([...result.rows].sort(comparePrincipleRowsById));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -124,80 +230,86 @@ export const principles = async (_req, res) => {
 
 export const principle = async (req, res) => {
   try {
-    const result = await query('SELECT id, name FROM public.principles WHERE id = $1', [req.params.id]);
+    const result = await query(
+      `SELECT principleid AS id, principlename AS name FROM ${T.principles} WHERE principleid = $1`,
+      [req.params.id],
+    );
     res.json(result.rows[0] || {});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 export function learned(req, res) {
   const db = readDb();
   const item = byId(db.student.principles, req.params.id);
+  if (!item) return res.status(404).json({ error: 'Principle not found' });
   item.learned = req.body.learned ?? true;
   logAction(db, 'student', `Marked principle ${item.name}`);
   writeDb(db);
   res.json(item);
 }
+
 export async function puzzles(_req, res) {
   try {
-    const result = await query('SELECT chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer FROM public.chess_puzzle ORDER BY chess_puzzle_id ASC');
+    const result = await query(
+      'SELECT chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer FROM public.chess_puzzle ORDER BY chess_puzzle_id ASC',
+    );
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch puzzles' });
+    res.status(500).json({ error: err.message });
   }
 }
 
 export async function puzzle(req, res) {
   try {
-    const result = await query('SELECT chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer FROM public.chess_puzzle WHERE chess_puzzle_id = $1', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Puzzle not found' });
-    res.json(result.rows[0]);
+    const result = await query(
+      'SELECT chess_puzzle_id as id, principle_id, fen_with_move, isdone, answer FROM public.chess_puzzle WHERE chess_puzzle_id = $1',
+      [req.params.id],
+    );
+    res.json(result.rows[0] || {});
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch puzzle' });
+    res.status(500).json({ error: err.message });
   }
 }
 
-export async function submitPuzzle(req, res) {
-  try {
-    const { id } = req.params;
-    const { move } = req.body;
-    
-    const result = await query('SELECT * FROM public.chess_puzzle WHERE chess_puzzle_id = $1', [id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Puzzle not found' });
-    
-    const item = result.rows[0];
-    const correct = String(move).trim().toLowerCase() === String(item.answer).trim().toLowerCase();
-    
-    if (correct) {
-      await query('UPDATE public.chess_puzzle SET isdone = true WHERE chess_puzzle_id = $1', [id]);
-    }
-    
-    res.json({ 
-      correct, 
-      puzzle: { id: item.chess_puzzle_id, ...item }, 
-      message: correct ? 'Correct! Puzzle solved.' : 'Not quite. Review this mistake and try again.' 
-    });
-  } catch (err) {
-    console.error('Error submitting puzzle:', err);
-    res.status(500).json({ error: 'Failed to submit puzzle' });
-  }
+export function submitPuzzle(req, res) {
+  const db = readDb();
+  const item = byId(db.student.puzzles, req.params.id);
+  if (!item) return res.status(404).json({ error: 'Puzzle not found' });
+  const correct = req.body.solution?.toLowerCase() === item.solution?.toLowerCase();
+  logAction(db, 'student', `Submitted puzzle ${item.title}`);
+  res.json({ correct, explanation: correct ? 'Correct tactic.' : 'Not quite. Try again.' });
 }
-export const achievements = (_req, res) => res.json(readDb().student.achievements);
-export const analytics = (_req, res) => res.json(readDb().student.analytics);
-export const classes = (_req, res) => res.json(readDb().student.classes);
-export const classDetail = (req, res) => res.json(byId(readDb().student.classes, req.params.id) || {});
+
+export function classes(_req, res) {
+  return res.json(readDb().student.classes);
+}
+
+export function classDetail(req, res) {
+  return res.json(byId(readDb().student.classes, req.params.id) || {});
+}
+
 export function joinClass(req, res) {
   const db = readDb();
-  const item = byId(db.student.classes, req.params.id);
-  logAction(db, 'student', `Joined class ${item.title}`);
-  writeDb(db);
-  res.json({ ok: true, room: item.meetingLink, class: item });
+  logAction(db, 'student', `Joined class ${req.params.id}`);
+  res.json({ ok: true, meetingLink: 'https://meet.example.com/live-class' });
 }
-export const profile = (_req, res) => res.json(readDb().student.profile);
+
+export function profile(_req, res) {
+  return res.json(readDb().student.profile);
+}
+
 export function updateProfile(req, res) {
   const db = readDb();
   Object.assign(db.student.profile, req.body);
   writeDb(db);
   res.json(db.student.profile);
 }
-export const mistakes = (_req, res) => res.json(readDb().student.mistakes);
+
+export function mistakes(_req, res) {
+  return res.json(readDb().student.mistakes);
+}
+
+export const achievements = (_req, res) => res.json(readDb().student.achievements);
+export const analytics = (_req, res) => res.json(readDb().student.analytics);
